@@ -1,12 +1,11 @@
 /**
- * CELL // SIGNAL — High-DPI Stage Telemetry & Synth Visualizer
+ * JUSTICE SYNTH — Visual-First Stage Telemetry & Data Node Renderer
  *
- * Explicitly renders:
- *  - Sanctuary Core (warm golden/cyan harmonic beauty underneath)
- *  - Constricting Carceral Cage (radial iron bars & FM geometric distortion)
- *  - 4 Explicit Telemetry Signal Conduits with live [DATA ──► SYNTH PARAM] callouts
- *  - Dual Oscilloscope (Ideal Sanctuary Wave ghosted behind Crushed Output Wave)
- *  - Interactive Memorial Constellation for every logged Custody Death Record
+ * Focuses strictly on visual clarity and data interaction:
+ *  - Central Human Core vs. Constricting Carceral Cage
+ *  - 4 Interactive Visual Data Nodes (clickable to highlight & inspect)
+ *  - Memorial Constellation in the upper sky for every custody death record
+ *  - Dual Waveform Horizon (unfiltered human wave vs. pressured system output)
  */
 
 function clamp(v, min, max) {
@@ -14,10 +13,11 @@ function clamp(v, min, max) {
 }
 
 export class TelemetryVisualizer {
-  constructor(canvas, tooltipEl) {
+  constructor(canvas, tooltipEl, onNodeSelect = null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.tooltipEl = tooltipEl;
+    this.onNodeSelect = onNodeSelect;
 
     this.width = 1280;
     this.height = 640;
@@ -31,12 +31,20 @@ export class TelemetryVisualizer {
     this.particles = [];
     this.hoveredStar = null;
 
+    this.selectedSection = null;
+    this.hoveredNode = null;
+    this.nodeHitboxes = [];
+
     this.pointerX = -999;
     this.pointerY = -999;
 
     this.initAmbientParticles();
     this.resize();
     this.bindPointerEvents();
+  }
+
+  setSelectedSection(sectionKey) {
+    this.selectedSection = sectionKey;
   }
 
   initAmbientParticles() {
@@ -67,6 +75,7 @@ export class TelemetryVisualizer {
       this.pointerX = clientX - rect.left;
       this.pointerY = clientY - rect.top;
       this.checkStarHover();
+      this.checkNodeHover();
     };
 
     this.canvas.addEventListener('pointermove', (e) => {
@@ -75,14 +84,36 @@ export class TelemetryVisualizer {
 
     this.canvas.addEventListener('pointerdown', (e) => {
       updatePos(e.clientX, e.clientY);
+      if (this.hoveredNode && typeof this.onNodeSelect === 'function') {
+        this.onNodeSelect(this.hoveredNode);
+      }
     });
 
     this.canvas.addEventListener('pointerleave', () => {
       this.pointerX = -999;
       this.pointerY = -999;
       this.hoveredStar = null;
+      this.hoveredNode = null;
+      this.canvas.style.cursor = 'default';
       if (this.tooltipEl) this.tooltipEl.classList.add('hidden');
     });
+  }
+
+  checkNodeHover() {
+    let hit = null;
+    for (const box of this.nodeHitboxes) {
+      if (
+        this.pointerX >= box.x &&
+        this.pointerX <= box.x + box.w &&
+        this.pointerY >= box.y &&
+        this.pointerY <= box.y + box.h
+      ) {
+        hit = box.key;
+        break;
+      }
+    }
+    this.hoveredNode = hit;
+    this.canvas.style.cursor = hit || this.hoveredStar ? 'pointer' : 'default';
   }
 
   checkStarHover() {
@@ -111,8 +142,8 @@ export class TelemetryVisualizer {
       <div style="color:#ff8e9b;font-weight:700;margin-bottom:3px;">IN MEMORIAM · ${r.facility}</div>
       <div>${ageLabel} · ${r.race} ${r.sex}</div>
       <div>Status: <strong>${r.trial_status}</strong></div>
-      <div>Days Incarcerated: <strong>${r.days_incarcerated}</strong></div>
-      <div style="color:#98a2b3;margin-top:3px;">Cause: ${r.cause_of_death}</div>
+      <div>Days Held: <strong>${r.days_incarcerated}</strong></div>
+      <div style="color:#98a2b3;margin-top:3px;">${r.cause_of_death}</div>
     `;
     const tx = clamp(closest.nx * this.width + 14, 10, Math.max(20, this.width - 320));
     const ty = clamp(closest.ny * this.height - 20, 10, Math.max(20, this.height - 130));
@@ -124,7 +155,7 @@ export class TelemetryVisualizer {
   triggerDeathShock(record) {
     this.deathFlash = 1.0;
     const cx = this.width * 0.5;
-    const cy = this.height * 0.44;
+    const cy = this.height * 0.45;
     this.shockwaves.push({
       x: cx,
       y: cy,
@@ -134,10 +165,9 @@ export class TelemetryVisualizer {
       speed: 280
     });
 
-    // Place a persistent star in the upper memorial sky
     const idx = this.memorialStars.length;
-    const nx = clamp(0.14 + ((idx * 0.173) % 0.72) + (Math.random() - 0.5) * 0.04, 0.08, 0.92);
-    const ny = clamp(0.12 + ((idx * 0.089) % 0.22), 0.09, 0.36);
+    const nx = clamp(0.16 + ((idx * 0.173) % 0.68) + (Math.random() - 0.5) * 0.04, 0.1, 0.9);
+    const ny = clamp(0.11 + ((idx * 0.089) % 0.18), 0.09, 0.30);
 
     this.memorialStars.push({
       nx,
@@ -155,7 +185,7 @@ export class TelemetryVisualizer {
     this.contractFlash = 0.85;
     this.shockwaves.push({
       x: this.width * 0.5,
-      y: this.height * 0.44,
+      y: this.height * 0.45,
       radius: 28,
       alpha: 0.75,
       color: '#fb7185',
@@ -175,42 +205,29 @@ export class TelemetryVisualizer {
     ctx.save();
     ctx.scale(this.dpr, this.dpr);
 
-    // Clear subtle trail background
     ctx.fillStyle = this.deathFlash > 0.1
       ? `rgba(26, 7, 12, ${0.42 + this.deathFlash * 0.25})`
-      : 'rgba(7, 8, 12, 0.55)';
+      : 'rgba(7, 8, 12, 0.56)';
     ctx.fillRect(0, 0, w, h);
 
     const cx = w * 0.5;
-    const cy = h * 0.44;
+    const cy = h * 0.45;
     const minDim = Math.min(w, h);
-    const baseRadius = clamp(minDim * 0.18, 48, 118);
+    const baseRadius = clamp(minDim * 0.19, 46, 126);
 
     const synthState = synth.state;
     const sanctuary = synthState.sanctuaryStrength;
     const pressure = synthState.systemicPressure;
     const ch = snapshot.channels;
 
-    // 1. Subtle architectural radial coordinate grid
     this.drawCoordinateField(ctx, cx, cy, w, h, pressure);
-
-    // 2. Memorial Constellation (Upper Sky)
     this.drawMemorialSky(ctx, w, h);
-
-    // 3. Explicit Signal Conduits from 4 Data Channels -> Core
-    this.drawSignalConduits(ctx, w, h, cx, cy, snapshot, synthState);
-
-    // 4. Centerpiece: Sanctuary Harmonic Core vs. Carceral Cage
+    this.drawDataNodes(ctx, w, h, cx, cy, snapshot);
     this.drawSanctuaryCore(ctx, cx, cy, baseRadius, sanctuary, pressure, ch.community.modulated);
     this.drawCarceralCage(ctx, cx, cy, baseRadius, sanctuary, pressure, ch);
-
-    // 5. Shockwaves on Death / Contract Events
     this.drawShockwaves(ctx, safeDt);
-
-    // 6. Dual Waveform & Spectrum Horizon
     this.drawDualOscilloscope(ctx, w, h, synth, sanctuary, pressure);
 
-    // 7. Stark Horizontal Fault-Line Tear on Custody Death
     if (this.deathFlash > 0.05) {
       ctx.save();
       ctx.strokeStyle = `rgba(255, 51, 75, ${this.deathFlash * 0.85})`;
@@ -230,20 +247,19 @@ export class TelemetryVisualizer {
 
   drawCoordinateField(ctx, cx, cy, w, h, pressure) {
     ctx.save();
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.03 + pressure * 0.025})`;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.028 + pressure * 0.022})`;
     ctx.lineWidth = 1;
 
-    for (let r = 80; r < Math.max(w, h) * 0.7; r += 85) {
+    for (let r = 85; r < Math.max(w, h) * 0.7; r += 90) {
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // Panopticon sightlines
     for (let i = 0; i < 12; i++) {
-      const ang = (i / 12) * Math.PI * 2 + this.time * 0.015;
+      const ang = (i / 12) * Math.PI * 2 + this.time * 0.014;
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(ang) * 40, cy + Math.sin(ang) * 40);
+      ctx.moveTo(cx + Math.cos(ang) * 44, cy + Math.sin(ang) * 44);
       ctx.lineTo(cx + Math.cos(ang) * Math.max(w, h), cy + Math.sin(ang) * Math.max(w, h));
       ctx.stroke();
     }
@@ -260,7 +276,6 @@ export class TelemetryVisualizer {
       const twinkle = 0.65 + 0.35 * Math.sin(this.time * 2.1 + star.phase);
       const isHovered = this.hoveredStar === star;
 
-      // Subtle line linking recent memorial star down toward horizon
       if (i > 0) {
         const prev = this.memorialStars[i - 1];
         ctx.strokeStyle = 'rgba(232, 184, 109, 0.09)';
@@ -293,7 +308,6 @@ export class TelemetryVisualizer {
     ctx.save();
     const coreRadius = baseRadius * (0.68 + sanctuary * 0.58);
 
-    // Warm Golden & Cyan Harmonic Glow underneath
     const glow = ctx.createRadialGradient(cx, cy, coreRadius * 0.1, cx, cy, coreRadius * 1.9);
     glow.addColorStop(0, `rgba(232, 184, 109, ${0.28 + sanctuary * 0.34})`);
     glow.addColorStop(0.55, `rgba(92, 225, 230, ${0.09 + sanctuary * 0.18})`);
@@ -303,7 +317,6 @@ export class TelemetryVisualizer {
     ctx.arc(cx, cy, coreRadius * 1.9, 0, Math.PI * 2);
     ctx.fill();
 
-    // 3 Harmonic Standing-Wave Choir Ribbons
     for (let ring = 0; ring < 3; ring++) {
       const rScale = 0.72 + ring * 0.19;
       const points = 96;
@@ -313,7 +326,6 @@ export class TelemetryVisualizer {
         const harmonic =
           Math.sin(theta * (3 + ring) + this.time * (0.9 + ring * 0.35)) * (5 + sanctuary * 11) +
           Math.cos(theta * 5 - this.time * 0.7) * (3 + communityMod * 7);
-        // Systemic jaggedness intrudes when pressure > sanctuary
         const intrusion = Math.max(0, pressure - sanctuary * 0.75) *
           Math.sin(theta * 19 + this.time * 9) * 8;
 
@@ -331,7 +343,6 @@ export class TelemetryVisualizer {
       ctx.stroke();
     }
 
-    // Orbiting sanctuary embers
     for (const p of this.particles) {
       p.angle += p.speed * 0.016 * (0.6 + sanctuary);
       const dist = baseRadius * (0.95 + p.dist * (0.8 + sanctuary));
@@ -348,7 +359,6 @@ export class TelemetryVisualizer {
 
   drawCarceralCage(ctx, cx, cy, baseRadius, sanctuary, pressure, ch) {
     ctx.save();
-    // Cage contracts inward as systemic pressure increases and expands slightly when sanctuary pushes back
     const cageRadius = baseRadius * clamp(1.52 - pressure * 0.44 + sanctuary * 0.16, 0.72, 1.75);
     const bars = 24;
 
@@ -368,7 +378,6 @@ export class TelemetryVisualizer {
       ctx.stroke();
     }
 
-    // Polygon FM / Wavefolder Distortion Ring
     const sides = 12;
     ctx.beginPath();
     for (let i = 0; i <= sides; i++) {
@@ -386,96 +395,119 @@ export class TelemetryVisualizer {
     ctx.restore();
   }
 
-  drawSignalConduits(ctx, w, h, cx, cy, snapshot, synthState) {
+  /**
+   * Draws 4 concise, clickable visual Data Nodes feeding the central visualization.
+   */
+  drawDataNodes(ctx, w, h, cx, cy, snapshot) {
     const ch = snapshot.channels;
     const isNarrow = w < 640;
+    const contractAmt = snapshot.currentContract
+      ? (snapshot.currentContract.amount >= 1e6
+        ? `$${(snapshot.currentContract.amount / 1e6).toFixed(1)}M`
+        : `$${Math.round(snapshot.currentContract.amount / 1e3)}K`)
+      : '$2,561/s';
 
-    const conduits = [
+    const nodes = [
       {
-        sx: w * 0.10,
-        sy: h * 0.25,
+        key: 'equity',
+        sx: isNarrow ? w * 0.16 : w * 0.14,
+        sy: h * 0.28,
         color: '#f59e0b',
         level: ch.equity.modulated,
         pulse: ch.equity.pulse,
-        label: isNarrow
-          ? `CXW/GEO ──► FM ${(synthState.effectiveFmIndex * 100).toFixed(0)}%`
-          : `CH1 CXW $${snapshot.stocks.cxw.price.toFixed(2)} · GEO $${snapshot.stocks.geo.price.toFixed(2)} ──► FM ${(synthState.effectiveFmIndex * 100).toFixed(0)}% / COMB ${(synthState.effectiveComb * 100).toFixed(0)}%`
+        title: 'PRISON STOCK',
+        metric: `CXW $${snapshot.stocks.cxw.price.toFixed(2)} · GEO $${snapshot.stocks.geo.price.toFixed(2)}`
       },
       {
-        sx: w * 0.10,
-        sy: h * 0.64,
+        key: 'spending',
+        sx: isNarrow ? w * 0.16 : w * 0.14,
+        sy: h * 0.62,
         color: '#fb7185',
         level: ch.spending.modulated,
         pulse: ch.spending.pulse,
-        label: isNarrow
-          ? `USASPEND ──► FOLD ${(synthState.effectiveFold * 100).toFixed(0)}%`
-          : `CH2 USASPENDING ($2,560/s) ──► WAVEFOLD ${(synthState.effectiveFold * 100).toFixed(0)}% / SUB`
+        title: 'FEDERAL SPEND',
+        metric: `${contractAmt} · $2,561/sec`
       },
       {
-        sx: w * 0.90,
-        sy: h * 0.25,
+        key: 'mortality',
+        sx: isNarrow ? w * 0.84 : w * 0.86,
+        sy: h * 0.28,
         color: '#ff334b',
         level: ch.mortality.modulated,
         pulse: ch.mortality.pulse,
-        label: isNarrow
-          ? `DEATHS ──► CRUSH ${(synthState.effectiveCrush * 100).toFixed(0)}%`
-          : `CH3 CUSTODY MORTALITY ──► BITCRUSH ${(synthState.effectiveCrush * 100).toFixed(0)}% / BELL`
+        title: 'CUSTODY DEATHS',
+        metric: `${snapshot.loggedDeathsCount} LOGGED`
       },
       {
-        sx: w * 0.90,
-        sy: h * 0.64,
+        key: 'community',
+        sx: isNarrow ? w * 0.84 : w * 0.86,
+        sy: h * 0.62,
         color: '#34d399',
         level: ch.community.modulated,
         pulse: ch.community.pulse,
-        label: isNarrow
-          ? `PETITIONS ──► ${Math.round(synthState.effectiveCutoff)}Hz`
-          : `CH4 DOCKETS/COMMUNITY ──► CHOIR CUTOFF ${Math.round(synthState.effectiveCutoff)}Hz`
+        title: 'COURTS & FAMILIES',
+        metric: '2.7M CHILDREN'
       }
     ];
 
+    this.nodeHitboxes = [];
     ctx.save();
-    ctx.font = `${isNarrow ? 9.5 : 10.5}px "IBM Plex Mono", monospace`;
 
-    for (const c of conduits) {
-      const alpha = clamp(0.18 + c.level * 0.45 + c.pulse * 0.35, 0.15, 0.95);
-      ctx.strokeStyle = c.color;
-      ctx.globalAlpha = alpha * 0.55;
-      ctx.lineWidth = 1 + c.level * 1.8;
+    for (const n of nodes) {
+      const isSelected = this.selectedSection === n.key;
+      const isHovered = this.hoveredNode === n.key;
+      const hasSelection = Boolean(this.selectedSection);
+      const dimFactor = hasSelection && !isSelected && !isHovered ? 0.42 : 1.0;
+
+      const alpha = clamp((0.25 + n.level * 0.45 + n.pulse * 0.3) * dimFactor, 0.12, 0.98);
+      ctx.strokeStyle = n.color;
+      ctx.globalAlpha = alpha * (isSelected ? 0.92 : 0.55);
+      ctx.lineWidth = isSelected ? 2.4 : 1 + n.level * 1.6;
 
       ctx.beginPath();
-      ctx.moveTo(c.sx, c.sy);
-      ctx.quadraticCurveTo((c.sx + cx) * 0.5, c.sy, cx, cy);
+      ctx.moveTo(n.sx, n.sy);
+      ctx.quadraticCurveTo((n.sx + cx) * 0.5, n.sy, cx, cy);
       ctx.stroke();
 
-      // Traveling telemetry packet dot along Bezier
-      const t = (this.time * (0.45 + c.level * 0.85)) % 1;
-      const mx = (1 - t) * (1 - t) * c.sx + 2 * (1 - t) * t * ((c.sx + cx) * 0.5) + t * t * cx;
-      const my = (1 - t) * (1 - t) * c.sy + 2 * (1 - t) * t * c.sy + t * t * cy;
-      ctx.globalAlpha = 0.95;
-      ctx.fillStyle = c.color;
+      // Traveling signal dot
+      const t = (this.time * (0.45 + n.level * 0.85)) % 1;
+      const mx = (1 - t) * (1 - t) * n.sx + 2 * (1 - t) * t * ((n.sx + cx) * 0.5) + t * t * cx;
+      const my = (1 - t) * (1 - t) * n.sy + 2 * (1 - t) * t * n.sy + t * t * cy;
+      ctx.globalAlpha = dimFactor;
+      ctx.fillStyle = n.color;
       ctx.beginPath();
-      ctx.arc(mx, my, 2.5 + c.pulse * 3, 0, Math.PI * 2);
+      ctx.arc(mx, my, (isSelected ? 3.8 : 2.6) + n.pulse * 2.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // Explicit Callout Tag near source anchor
-      const alignRight = c.sx > cx;
-      const textWidth = ctx.measureText(c.label).width;
-      const padX = 7;
-      const boxW = textWidth + padX * 2;
-      const boxH = 19;
-      const bx = alignRight ? clamp(c.sx - boxW, 8, w - boxW - 8) : clamp(c.sx, 8, w - boxW - 8);
-      const by = clamp(c.sy - 10, 48, h - 110);
+      // Compact Interactive Node Pill
+      ctx.font = `700 ${isNarrow ? 9.5 : 10.5}px "IBM Plex Mono", monospace`;
+      const titleW = ctx.measureText(n.title).width;
+      ctx.font = `${isNarrow ? 9 : 10}px "IBM Plex Mono", monospace`;
+      const metricW = ctx.measureText(n.metric).width;
 
-      ctx.globalAlpha = 0.84;
-      ctx.fillStyle = 'rgba(9, 12, 18, 0.88)';
+      const boxW = Math.max(titleW, metricW) + 18;
+      const boxH = 34;
+      const alignRight = n.sx > cx;
+      const bx = alignRight ? clamp(n.sx - boxW, 8, w - boxW - 8) : clamp(n.sx, 8, w - boxW - 8);
+      const by = clamp(n.sy - boxH * 0.5, 52, h - 98);
+
+      this.nodeHitboxes.push({ key: n.key, x: bx, y: by, w: boxW, h: boxH });
+
+      ctx.globalAlpha = isSelected || isHovered ? 0.98 : 0.86 * dimFactor;
+      ctx.fillStyle = isSelected ? 'rgba(26, 30, 42, 0.96)' : 'rgba(9, 12, 18, 0.88)';
       ctx.fillRect(bx, by, boxW, boxH);
-      ctx.strokeStyle = c.color;
-      ctx.lineWidth = 0.9;
+      ctx.strokeStyle = isSelected ? '#e8b86d' : n.color;
+      ctx.lineWidth = isSelected || isHovered ? 1.6 : 0.9;
       ctx.strokeRect(bx, by, boxW, boxH);
 
-      ctx.globalAlpha = 0.96;
+      ctx.globalAlpha = dimFactor;
+      ctx.fillStyle = n.color;
+      ctx.font = `700 ${isNarrow ? 9.5 : 10.5}px "IBM Plex Mono", monospace`;
+      ctx.fillText(n.title, bx + 9, by + 13);
+
       ctx.fillStyle = '#eef2f6';
-      ctx.fillText(c.label, bx + padX, by + 13);
+      ctx.font = `${isNarrow ? 9 : 10}px "IBM Plex Mono", monospace`;
+      ctx.fillText(n.metric, bx + 9, by + 27);
     }
 
     ctx.restore();
@@ -502,8 +534,8 @@ export class TelemetryVisualizer {
   }
 
   drawDualOscilloscope(ctx, w, h, synth, sanctuary, pressure) {
-    const scopeY = h * 0.76;
-    const scopeAmp = clamp(h * 0.085, 22, 48);
+    const scopeY = h * 0.79;
+    const scopeAmp = clamp(h * 0.08, 20, 44);
 
     const outWave = synth.getWaveformData();
     const sanctuaryWave = synth.getSanctuaryWaveData();
@@ -511,20 +543,18 @@ export class TelemetryVisualizer {
 
     ctx.save();
 
-    // Frequency Spectrum Horizon Bars (subtle)
     if (freqData) {
       const barCount = 72;
       const barW = w / barCount;
       for (let i = 0; i < barCount; i++) {
         const bin = Math.floor(Math.pow(i / barCount, 1.5) * (freqData.length * 0.45));
         const mag = freqData[bin] / 255;
-        const bh = mag * scopeAmp * 1.45;
-        ctx.fillStyle = `rgba(92, 225, 230, ${0.06 + mag * 0.14})`;
+        const bh = mag * scopeAmp * 1.4;
+        ctx.fillStyle = `rgba(92, 225, 230, ${0.05 + mag * 0.13})`;
         ctx.fillRect(i * barW, scopeY + scopeAmp * 0.65 - bh, barW - 1.5, bh);
       }
     }
 
-    // 1. Ideal Underlying Sanctuary Wave (Warm Ghosted Gold)
     ctx.beginPath();
     const samples = 180;
     for (let i = 0; i <= samples; i++) {
@@ -544,7 +574,6 @@ export class TelemetryVisualizer {
     ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    // 2. Actual Master Output Wave (Crushed / Modulated Reality)
     ctx.beginPath();
     for (let i = 0; i <= samples; i++) {
       const t = i / samples;

@@ -75,16 +75,47 @@ class CarceralCrushProcessor extends AudioWorkletProcessor {
 registerProcessor('carceral-crush-processor', CarceralCrushProcessor);
 `;
 
-const SCALES = {
-  dmin9: [73.42, 110.0, 174.61, 261.63, 329.63],       // D2, A2, F3, C4, E4 (Dmin9 Elegy)
-  just: [65.41, 98.115, 163.525, 245.28, 327.05],      // C2 Just Intonation (1, 3/2, 5/2, 15/4, 5)
-  quartal: [73.42, 98.0, 146.83, 196.0, 293.66],       // D2, G2, D3, G3, D4 (Open Quartal)
-  drone: [55.0, 110.0, 165.0, 220.0, 277.18]           // A1 Deep Harmonic Root
+const ROOT_SEMITONES = {
+  C: 0,
+  'C#': 1,
+  D: 2,
+  'D#': 3,
+  E: 4,
+  F: 5,
+  'F#': 6,
+  G: 7,
+  'G#': 8,
+  A: 9,
+  'A#': 10,
+  B: 11
 };
+
+const MODE_INTERVALS = {
+  dorian: [0, 7, 10, 14, 15],
+  aeolian: [0, 7, 8, 10, 15],
+  phrygian: [0, 7, 8, 10, 13],
+  harmonic_minor: [0, 7, 8, 11, 15],
+  major: [0, 7, 11, 14, 16],
+  lydian: [0, 7, 11, 16, 18],
+  mixolydian: [0, 7, 10, 14, 16],
+  pentatonic_minor: [0, 7, 10, 12, 15],
+  fifths: [0, 7, 12, 19, 24]
+};
+
+function midiToFreq(midi, a4Freq = 440) {
+  return a4Freq * Math.pow(2, (midi - 69) / 12);
+}
+
+function getChoirNotes(rootKey = 'D', modeKey = 'dorian', a4Freq = 440) {
+  const semi = ROOT_SEMITONES[rootKey] ?? 2; // Default D
+  const baseMidi = 36 + semi; // C2 (36) .. B2 (47)
+  const intervals = MODE_INTERVALS[modeKey] || MODE_INTERVALS.dorian;
+  return intervals.map(iv => midiToFreq(baseMidi + iv, a4Freq));
+}
 
 export const SYNTH_PRESETS = {
   elegy: {
-    scale: 'dmin9',
+    modeKey: 'dorian',
     morph: 35,
     detune: 18,
     cutoff: 1450,
@@ -104,7 +135,7 @@ export const SYNTH_PRESETS = {
     delay: 30
   },
   panopticon: {
-    scale: 'quartal',
+    modeKey: 'phrygian',
     morph: 68,
     detune: 32,
     cutoff: 1100,
@@ -124,7 +155,7 @@ export const SYNTH_PRESETS = {
     delay: 46
   },
   sanctuary: {
-    scale: 'just',
+    modeKey: 'lydian',
     morph: 24,
     detune: 12,
     cutoff: 2400,
@@ -144,7 +175,7 @@ export const SYNTH_PRESETS = {
     delay: 38
   },
   stock_shock: {
-    scale: 'dmin9',
+    modeKey: 'harmonic_minor',
     morph: 58,
     detune: 40,
     cutoff: 1700,
@@ -164,7 +195,7 @@ export const SYNTH_PRESETS = {
     delay: 52
   },
   memorial: {
-    scale: 'drone',
+    modeKey: 'fifths',
     morph: 44,
     detune: 15,
     cutoff: 960,
@@ -198,10 +229,14 @@ export class CarceralSynthEngine {
 
     this.params = {
       ...SYNTH_PRESETS.elegy,
+      rootKey: 'D',
+      modeKey: 'dorian',
+      a4Freq: 440,
       masterVol: 78,
       xyX: 0.35, // Morph / Formant
       xyY: 0.55  // Human Sanctuary Force (0..1)
     };
+    this.activeNotes = getChoirNotes(this.params.rootKey, this.params.modeKey, this.params.a4Freq);
 
     // Computed struggle state (exposed to visualizer)
     this.state = {
@@ -249,7 +284,7 @@ export class CarceralSynthEngine {
 
     this.buildWavetables();
     await this.buildAudioGraph();
-    this.applyScale(this.params.scale);
+    this.setMusicalKeyAndMode(this.params.rootKey, this.params.modeKey, this.params.a4Freq);
 
     this.initialized = true;
     this.setMuted(false);
@@ -386,7 +421,7 @@ export class CarceralSynthEngine {
     sanctuaryCleanGain.connect(delaySend);
 
     const choirVoices = [];
-    const baseScale = SCALES.dmin9;
+    const baseScale = this.activeNotes;
     const pans = [-0.68, 0.68, -0.35, 0.35, 0];
 
     for (let i = 0; i < 5; i++) {
@@ -656,9 +691,13 @@ export class CarceralSynthEngine {
     return curve;
   }
 
-  applyScale(scaleKey) {
-    this.params.scale = scaleKey;
-    const notes = SCALES[scaleKey] || SCALES.dmin9;
+  setMusicalKeyAndMode(rootKey = this.params.rootKey, modeKey = this.params.modeKey, a4Freq = this.params.a4Freq) {
+    this.params.rootKey = rootKey;
+    this.params.modeKey = modeKey;
+    this.params.a4Freq = Number(a4Freq) || 440;
+
+    const notes = getChoirNotes(this.params.rootKey, this.params.modeKey, this.params.a4Freq);
+    this.activeNotes = notes;
     if (!this.initialized) return;
 
     this.nodes.choirVoices.forEach((v, idx) => {
@@ -669,8 +708,9 @@ export class CarceralSynthEngine {
   }
 
   setParamValue(key, value) {
-    if (key === 'scale') {
-      this.applyScale(value);
+    if (key === 'rootKey' || key === 'modeKey' || key === 'a4Freq') {
+      this.params[key] = key === 'a4Freq' ? Number(value) : value;
+      this.setMusicalKeyAndMode(this.params.rootKey, this.params.modeKey, this.params.a4Freq);
       return;
     }
     this.params[key] = Number(value);
@@ -679,8 +719,12 @@ export class CarceralSynthEngine {
   applyPreset(presetKey) {
     const p = SYNTH_PRESETS[presetKey];
     if (!p) return;
+    const savedRoot = this.params.rootKey;
+    const savedA4 = this.params.a4Freq;
     Object.assign(this.params, p);
-    this.applyScale(p.scale);
+    this.params.rootKey = savedRoot;
+    this.params.a4Freq = savedA4;
+    this.setMusicalKeyAndMode(this.params.rootKey, this.params.modeKey, this.params.a4Freq);
   }
 
   setMuted(mute) {
@@ -764,7 +808,7 @@ export class CarceralSynthEngine {
     this.setParam(this.nodes.subGain.gain, (this.params.sub / 100) * (0.28 + spendingMod * 0.18), 0, 0.55, 0.06);
 
     // 2. Dexed 4-Operator FM Metallic Engine (Driven by CH 01 Equity)
-    const rootFreq = (SCALES[this.params.scale] || SCALES.dmin9)[0];
+    const rootFreq = (this.activeNotes && this.activeNotes[0]) || 73.42;
     const r1 = (this.params.fmRatio1 / 100) + equityMod * 0.12;
     const r2 = (this.params.fmRatio2 / 100) + mortalityMod * 0.18;
     const r3 = (this.params.fmRatio3 / 100);
@@ -888,12 +932,14 @@ export class CarceralSynthEngine {
     tearSrc.stop(now + 0.36);
 
     // 4. Haunting Memorial Bell (rings through the cathedral reverb)
-    // Decay proportional to days_incarcerated; adds dissonant tritone partial if Pre-Trial
+    // Tuned to the active Key & Mode; decay proportional to days_incarcerated; adds dissonant tritone partial if Pre-Trial
     const age = record?.age || 38;
     const days = record?.days_incarcerated || 180;
     const isPretrial = /pre-?trial|unconvicted|civil/i.test(record?.trial_status || '');
 
-    const bellRoot = clamp(520 - age * 4.2, 210, 460);
+    const scalePool = this.activeNotes && this.activeNotes.length ? this.activeNotes : [73.42, 110, 174.61, 261.63, 329.63];
+    const scaleChoice = scalePool[Math.abs(Math.round(age)) % scalePool.length];
+    const bellRoot = clamp(scaleChoice * (scaleChoice < 160 ? 2 : 1), 190, 520);
     const bellDecay = clamp(3.2 + Math.log10(Math.max(10, days)) * 1.4, 3.2, 7.8);
     const partials = isPretrial ? [1.0, 1.414, 2.0, 2.756] : [1.0, 1.5, 2.0, 2.98];
 
@@ -926,9 +972,10 @@ export class CarceralSynthEngine {
 
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
+    const rootFreq = (this.activeNotes && this.activeNotes[0]) || 73.42;
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(92, now);
-    osc.frequency.exponentialRampToValueAtTime(42, now + 0.65);
+    osc.frequency.setValueAtTime(rootFreq * 1.5, now);
+    osc.frequency.exponentialRampToValueAtTime(clamp(rootFreq * 0.5, 28, 120), now + 0.65);
 
     env.gain.setValueAtTime(0.001, now);
     env.gain.linearRampToValueAtTime(clamp(0.26 * spendingMod, 0.08, 0.38), now + 0.02);

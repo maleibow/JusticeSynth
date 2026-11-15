@@ -270,10 +270,21 @@ export class TelemetryEngine {
     // Datasets
     this.contracts = [...FALLBACK_CONTRACTS];
     this.contractIdx = 0;
+    this.currentContract = FALLBACK_CONTRACTS[0];
     this.deathRecords = [...FALLBACK_DEATH_RECORDS];
     this.deathIdx = 0;
+    this.currentDeath = FALLBACK_DEATH_RECORDS[0];
     this.communityFilings = [...FALLBACK_COMMUNITY_FILINGS];
     this.communityIdx = 0;
+    this.currentCommunity = FALLBACK_COMMUNITY_FILINGS[0];
+
+    this.lastUpdated = {
+      equity: Date.now(),
+      spending: Date.now(),
+      mortality: Date.now(),
+      community: Date.now(),
+      population: Date.now()
+    };
 
     // 4 Moldable Telemetry LFO Channels
     this.channels = {
@@ -498,6 +509,7 @@ export class TelemetryEngine {
       };
     }
 
+    this.lastUpdated.equity = Date.now();
     this.emit('status', this.apiStatus);
     this.emit('stocks', this.stocks);
   }
@@ -565,6 +577,7 @@ export class TelemetryEngine {
         if (parsed.length > 0) {
           this.contracts = parsed;
           this.contractIdx = 0;
+          this.lastUpdated.spending = Date.now();
           this.apiStatus.usaspending = { state: 'live', label: `LIVE (${parsed.length})` };
           this.emit('status', this.apiStatus);
           this.pulseContract(false);
@@ -575,6 +588,7 @@ export class TelemetryEngine {
       // Fallback handled below
     }
 
+    this.lastUpdated.spending = Date.now();
     this.apiStatus.usaspending = { state: 'archive', label: 'ARCHIVE (6)' };
     this.emit('status', this.apiStatus);
     this.pulseContract(false);
@@ -648,12 +662,15 @@ export class TelemetryEngine {
       // Interleave live federal records with pre-trial/parish archive records
       this.deathRecords = [...collected.slice(0, 24), ...FALLBACK_DEATH_RECORDS];
       this.deathIdx = 0;
+      this.currentDeath = this.deathRecords[0];
       this.apiStatus.deaths = { state: 'live', label: `LIVE (${collected.length})` };
     } else {
       this.deathRecords = [...FALLBACK_DEATH_RECORDS];
+      this.currentDeath = this.deathRecords[0];
       this.apiStatus.deaths = { state: 'archive', label: `ARCHIVE (${FALLBACK_DEATH_RECORDS.length})` };
     }
 
+    this.lastUpdated.mortality = Date.now();
     this.emit('status', this.apiStatus);
     this.emit('deathsReady', this.deathRecords[0]);
   }
@@ -809,6 +826,7 @@ export class TelemetryEngine {
       this.apiStatus.community = { state: 'archive', label: `ARCHIVE (${FALLBACK_COMMUNITY_FILINGS.length})` };
     }
 
+    this.lastUpdated.community = Date.now();
     this.emit('status', this.apiStatus);
     this.pulseCommunity(false);
   }
@@ -896,6 +914,7 @@ export class TelemetryEngine {
     this.channels.equity.rawTarget = clamp(0.24 + avgPct * 0.08 + positiveMomentum * 0.06, 0.08, 0.96);
     this.channels.equity.pulse = clamp(0.35 + avgPct * 0.1, 0.25, 0.95);
 
+    this.lastUpdated.equity = Date.now();
     this.emit('stocks', this.stocks);
   }
 
@@ -905,14 +924,14 @@ export class TelemetryEngine {
     this.applyStockQuote('geo', this.stocks.geo.price * (1 + spike * 0.72), this.stocks.geo.prevClose, this.stocks.geo.volume + 58000);
     this.channels.equity.rawTarget = clamp(0.68 + Math.random() * 0.28, 0.5, 1.0);
     this.channels.equity.pulse = 1.0;
+    this.lastUpdated.equity = Date.now();
 
     this.emit('stocks', this.stocks);
     this.emit('event', {
       type: 'equity',
-      badge: 'EQUITY VELOCITY SURGE',
-      headline: `NYSE: CXW $${this.stocks.cxw.price.toFixed(2)} (${this.stocks.cxw.changePct >= 0 ? '+' : ''}${this.stocks.cxw.changePct.toFixed(2)}%) · GEO $${this.stocks.geo.price.toFixed(2)} (${this.stocks.geo.changePct >= 0 ? '+' : ''}${this.stocks.geo.changePct.toFixed(2)}%)`,
-      meta: `Private prison share momentum pushes FM Metallic Ratios & Concrete Cell Comb tension`,
-      patch: `CXW/GEO ──► FM INDEX ${(this.getModulated('equity') * 100).toFixed(0)}%`
+      section: 'equity',
+      badge: 'PRIVATE PRISON STOCK',
+      headline: `CXW $${this.stocks.cxw.price.toFixed(2)} (${this.stocks.cxw.changePct >= 0 ? '+' : ''}${this.stocks.cxw.changePct.toFixed(2)}%) · GEO $${this.stocks.geo.price.toFixed(2)} (${this.stocks.geo.changePct >= 0 ? '+' : ''}${this.stocks.geo.changePct.toFixed(2)}%)`
     });
   }
 
@@ -920,6 +939,7 @@ export class TelemetryEngine {
     if (!this.contracts.length) return;
     const contract = this.contracts[this.contractIdx % this.contracts.length];
     this.contractIdx = (this.contractIdx + 1) % this.contracts.length;
+    this.currentContract = contract;
 
     // Normalize $1M to $250M onto [0.22..0.98]
     const logScaled = clamp((Math.log10(Math.max(100000, contract.amount)) - 5.2) / 3.3, 0.18, 0.98);
@@ -931,10 +951,9 @@ export class TelemetryEngine {
       const amtFmt = this.formatCurrency(contract.amount);
       this.emit('event', {
         type: 'contract',
-        badge: 'FEDERAL CONTRACT AWARD',
-        headline: `${contract.recipient} — ${amtFmt} (${contract.agency})`,
-        meta: `${contract.location} · ${contract.description} [${contract.source}]`,
-        patch: `USASPENDING ──► WAVEFOLD ${(this.getModulated('spending') * 100).toFixed(0)}%`
+        section: 'spending',
+        badge: 'FEDERAL CONTRACT',
+        headline: `${contract.recipient} — ${amtFmt} (${contract.agency})`
       });
     }
   }
@@ -943,6 +962,7 @@ export class TelemetryEngine {
     if (!this.deathRecords.length) return;
     const record = this.deathRecords[this.deathIdx % this.deathRecords.length];
     this.deathIdx = (this.deathIdx + 1) % this.deathRecords.length;
+    this.currentDeath = record;
     this.loggedDeathsCount += 1;
 
     // Pre-trial unconvicted or young deaths increase shock amplitude
@@ -956,10 +976,9 @@ export class TelemetryEngine {
       const ageTxt = record.age ? `Age ${record.age}` : 'Age Unrecorded';
       this.emit('event', {
         type: 'death',
-        badge: 'CUSTODY DEATH RECORD',
-        headline: `${record.facility} — ${ageTxt} · ${record.race} ${record.sex} · ${record.trial_status}`,
-        meta: `${record.days_incarcerated} days incarcerated · Cause: ${record.cause_of_death} [${record.source}]`,
-        patch: `MORTALITY ──► BITCRUSH RUPTURE + MEMORIAL BELL`
+        section: 'mortality',
+        badge: 'CUSTODY DEATH',
+        headline: `${record.facility} — ${ageTxt} · ${record.cause_of_death}`
       });
     }
   }
@@ -968,6 +987,7 @@ export class TelemetryEngine {
     if (!this.communityFilings.length) return;
     const doc = this.communityFilings[this.communityIdx % this.communityFilings.length];
     this.communityIdx = (this.communityIdx + 1) % this.communityFilings.length;
+    this.currentCommunity = doc;
 
     this.channels.community.rawTarget = clamp(0.48 + Math.random() * 0.42, 0.35, 0.95);
     this.channels.community.pulse = 0.85;
@@ -976,12 +996,121 @@ export class TelemetryEngine {
     if (emitEvent) {
       this.emit('event', {
         type: 'community',
-        badge: 'LEGAL PETITION / BOP NOTICE',
-        headline: `${doc.title}`,
-        meta: `${doc.court} (${doc.date}) · ${doc.impactMetric} [${doc.source}]`,
-        patch: `PETITIONS ──► FORMANT CHOIR BLOOM ${(this.getModulated('community') * 100).toFixed(0)}%`
+        section: 'community',
+        badge: 'COURTS & PETITIONS',
+        headline: `${doc.title}`
       });
     }
+  }
+
+  getSectionDetails(sectionKey) {
+    if (sectionKey === 'equity') {
+      return {
+        key: 'equity',
+        title: 'PRIVATE PRISON STOCK (CXW & GEO)',
+        statusLabel: this.apiStatus.stocks.label,
+        statusState: this.apiStatus.stocks.state,
+        source: 'NYSE real-time/intraday quotes for CoreCivic (CXW, SEC CIK 0001070985) and The GEO Group (GEO, SEC CIK 0000923796).',
+        indicates: 'Public market valuation and trading volume of the two largest private prison operators in the U.S. Price and volume spikes track investor expectations around detention beds and federal contracts.',
+        frequency: this.stocks.marketOpen
+          ? 'Live API poll every 25 seconds (NYSE open); micro-tick tape interpolated every ~3s.'
+          : 'Market closed (anchored to last close); micro-tick tape runs every ~3s for live performance.',
+        lastUpdatedMs: this.lastUpdated.equity,
+        actionLabel: 'NEXT MARKET TICK',
+        records: [
+          {
+            label: 'CoreCivic, Inc. (NYSE: CXW)',
+            detail: `$${this.stocks.cxw.price.toFixed(2)} (${this.stocks.cxw.changePct >= 0 ? '+' : ''}${this.stocks.cxw.changePct.toFixed(2)}% vs prev close $${this.stocks.cxw.prevClose.toFixed(2)}) · Vol ${this.stocks.cxw.volume.toLocaleString('en-US')}`
+          },
+          {
+            label: 'The GEO Group, Inc. (NYSE: GEO)',
+            detail: `$${this.stocks.geo.price.toFixed(2)} (${this.stocks.geo.changePct >= 0 ? '+' : ''}${this.stocks.geo.changePct.toFixed(2)}% vs prev close $${this.stocks.geo.prevClose.toFixed(2)}) · Vol ${this.stocks.geo.volume.toLocaleString('en-US')}`
+          }
+        ]
+      };
+    }
+
+    if (sectionKey === 'spending') {
+      const macro = this.getMacroSnapshot();
+      const recent = [this.currentContract, ...this.contracts.filter(c => c !== this.currentContract)].slice(0, 4);
+      return {
+        key: 'spending',
+        title: 'FEDERAL CARCERAL SPENDING & CONTRACTS',
+        statusLabel: this.apiStatus.usaspending.label,
+        statusState: this.apiStatus.usaspending.state,
+        source: 'USAspending.gov API v2 (DOJ Bureau of Prisons / DHS ICE contract awards) + Prison Policy Initiative / Bureau of Justice Statistics annual spend baselines.',
+        indicates: 'Taxpayer dollars obligated to private detention contractors and total U.S. corrections spending ($80.7B/yr direct = $2,560.55/sec; $182B/yr total system burden = $5,771.18/sec).',
+        frequency: 'Session dollar counter updates every second. Contract awards fetched live from USAspending.gov on sync and cycled every ~11s.',
+        lastUpdatedMs: this.lastUpdated.spending,
+        actionLabel: 'NEXT CONTRACT AWARD',
+        records: [
+          {
+            label: 'Session Spend & Displaced Community Cost',
+            detail: `$${macro.directSpend.toLocaleString('en-US', { maximumFractionDigits: 0 })} direct ($${macro.totalBurden.toLocaleString('en-US', { maximumFractionDigits: 0 })} total burden) · Equivalent to ${macro.teacherYears.toFixed(2)} teacher salaries or ${macro.housingUnits.toFixed(2)} housing units.`
+          },
+          ...recent.map(c => ({
+            label: `${c.recipient} — ${this.formatCurrency(c.amount)}`,
+            detail: `${c.agency} · ${c.location} · ${c.description} [${c.source}]`
+          }))
+        ]
+      };
+    }
+
+    if (sectionKey === 'mortality') {
+      const recent = [this.currentDeath, ...this.deathRecords.filter(d => d !== this.currentDeath)].slice(0, 5);
+      return {
+        key: 'mortality',
+        title: 'DEATHS IN CUSTODY',
+        statusLabel: this.apiStatus.deaths.label,
+        statusState: this.apiStatus.deaths.state,
+        source: 'UCLA Law Behind Bars Data Project (Federal BOP & ICE individual mortality CSVs) and Loyola Incarceration Transparency Project records.',
+        indicates: 'Documented deaths inside U.S. federal prisons, immigration detention centers, and local jails, including unconvicted pre-trial detainees and people held under medical neglect.',
+        frequency: 'Dataset pulled from UCLA Behind Bars on load/sync (updated periodically as agencies disclose records); records cycle every ~16s or on manual pulse.',
+        lastUpdatedMs: this.lastUpdated.mortality,
+        actionLabel: 'PULSE NEXT DEATH RECORD',
+        records: recent.map(r => ({
+          label: `${r.facility} — ${r.age ? `Age ${r.age}` : 'Age N/A'} (${r.sex}, ${r.race})`,
+          detail: `Status: ${r.trial_status} · ${r.days_incarcerated} days held · Cause: ${r.cause_of_death} [${r.source}]`
+        }))
+      };
+    }
+
+    if (sectionKey === 'community') {
+      const recent = [this.currentCommunity, ...this.communityFilings.filter(f => f !== this.currentCommunity)].slice(0, 4);
+      return {
+        key: 'community',
+        title: 'COURTS, BOP NOTICES & FAMILY IMPACT',
+        statusLabel: this.apiStatus.community.label,
+        statusState: this.apiStatus.community.state,
+        source: 'Federal Register API (Bureau of Prisons notices), CourtListener REST API (prisoner civil rights / habeas filings), and Vera Institute / Prison Policy Initiative.',
+        indicates: 'Active federal prison policy changes, inmate legal petitions challenging detention conditions, and the collateral impact on families (2.7M U.S. children with an incarcerated parent).',
+        frequency: 'Live API sync pulls latest Federal Register & CourtListener filings (updated daily on weekdays); items cycle every ~9s.',
+        lastUpdatedMs: this.lastUpdated.community,
+        actionLabel: 'NEXT LEGAL FILING',
+        records: recent.map(d => ({
+          label: `${d.title}`,
+          detail: `${d.court} (${d.date}) · ${d.impactMetric} [${d.source}]`
+        }))
+      };
+    }
+
+    // National population baseline section
+    return {
+      key: 'population',
+      title: 'US INCARCERATED & PRE-TRIAL POPULATION',
+      statusLabel: 'ANNUAL / QUARTERLY',
+      statusState: 'archive',
+      source: 'Bureau of Justice Statistics (BJS), Federal Bureau of Prisons (BOP), and Prison Policy Initiative Whole Pie dataset.',
+      indicates: '1,918,500 people incarcerated across U.S. state prisons, federal prisons, local jails, and immigration detention. Over 426,000 people in local jails have not been convicted of a crime (held pre-trial).',
+      frequency: 'Updated weekly by Federal BOP and quarterly/annually by BJS national census.',
+      lastUpdatedMs: this.lastUpdated.population,
+      actionLabel: 'REFRESH ALL APIS',
+      records: [
+        { label: 'Total U.S. Incarcerated Population', detail: '1,918,500 people behind bars nationwide' },
+        { label: 'Unconvicted Pre-Trial Jail Population', detail: '426,000+ people detained awaiting trial (often unable to afford cash bail)' },
+        { label: 'Children Impacted', detail: '2,700,000 U.S. children currently have at least one incarcerated parent' }
+      ]
+    };
   }
 
   getModulated(name) {
@@ -994,7 +1123,6 @@ export class TelemetryEngine {
     const elapsedSec = Math.max(0, (performance.now() - this.startTime) / 1000);
     const directSpend = elapsedSec * DIRECT_SPEND_PER_SEC;
     const totalBurden = elapsedSec * TOTAL_BURDEN_PER_SEC;
-    // Opportunity cost equivalents based on session direct spending
     const teacherYears = directSpend / 68000;
     const housingUnits = directSpend / 22000;
     const mentalHealthBeds = directSpend / 54000;
@@ -1015,7 +1143,6 @@ export class TelemetryEngine {
     const mortalityMod = this.getModulated('mortality');
     const communityMod = this.getModulated('community');
 
-    // Weighted systemic gravity from the 3 carceral apparatus channels
     const systemicPressure = clamp(
       equityMod * 0.32 + spendingMod * 0.38 + mortalityMod * 0.34,
       0.0,
@@ -1032,6 +1159,9 @@ export class TelemetryEngine {
       systemicPressure,
       stocks: this.stocks,
       loggedDeathsCount: this.loggedDeathsCount,
+      currentContract: this.currentContract,
+      currentDeath: this.currentDeath,
+      currentCommunity: this.currentCommunity,
       macro: this.getMacroSnapshot()
     };
   }

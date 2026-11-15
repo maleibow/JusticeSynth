@@ -4,320 +4,329 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#07080c" />
-  <title>CELL // SIGNAL — Carceral Industrial Telemetry &amp; Drone Synthesizer</title>
+  <title>JUSTICE SYNTH — Live U.S. Carceral Data &amp; Drone Instrument</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app" class="app-shell">
-    <!-- Top Macroeconomic & Human Cost Banner -->
+    <!-- Top Bar: Brand, 3 Clean Data Cells, Live-Set Key/Mode, Backend/Mute -->
     <header id="telemetry-header" class="top-banner">
       <div class="brand-block">
         <div class="brand-mark">
           <span class="pulse-dot" id="audio-status-dot"></span>
-          <span class="brand-title">CELL // SIGNAL</span>
+          <span class="brand-title">JUSTICE SYNTH</span>
         </div>
-        <div class="brand-sub">CARCERAL TELEMETRY DRONE ENGINE</div>
+        <div class="brand-sub">U.S. CARCERAL DATA INSTRUMENT</div>
       </div>
 
-      <div class="macro-counters" aria-label="Macroeconomic and Human Carceral Telemetry">
-        <div class="macro-cell">
-          <span class="macro-label">DIRECT CORRECTIONS SPEND (SESSION)</span>
+      <div class="macro-counters" aria-label="National Carceral Counters">
+        <button class="macro-cell clickable-section" data-inspect="spending" type="button" title="Click to inspect Federal &amp; National Spending data">
+          <span class="macro-label">SPENT THIS SESSION</span>
           <span class="macro-value money" id="session-direct-spend">$0.00</span>
-          <span class="macro-sub" id="rate-direct-label">$2,560.55 / SEC</span>
-        </div>
-        <div class="macro-cell">
-          <span class="macro-label">TOTAL CARCERAL BURDEN (SESSION)</span>
-          <span class="macro-value burden" id="session-total-burden">$0.00</span>
-          <span class="macro-sub">$5,771.18 / SEC · $182B / YR</span>
-        </div>
-        <div class="macro-cell">
-          <span class="macro-label">US INCARCERATED / PRE-TRIAL</span>
+          <span class="macro-sub">$2,560.55 / SEC · Updated every 1s</span>
+        </button>
+        <button class="macro-cell clickable-section" data-inspect="population" type="button" title="Click to inspect U.S. Incarcerated &amp; Pre-Trial counts">
+          <span class="macro-label">US INCARCERATED</span>
           <span class="macro-value human" id="population-counter">1,918,500</span>
-          <span class="macro-sub">426,000+ UNCONVICTED PRE-TRIAL</span>
-        </div>
-        <div class="macro-cell opportunity-cell">
-          <span class="macro-label">DISPLACED COMMUNITY EQUIVALENT</span>
-          <span class="macro-value opportunity" id="opportunity-cost-readout">0.00 TEACHER YEARS · 0.00 HOUSING UNITS</span>
-          <span class="macro-sub" id="opportunity-sub">2.7M CHILDREN WITH AN INCARCERATED PARENT</span>
-        </div>
+          <span class="macro-sub">426,000+ unconvicted pre-trial</span>
+        </button>
+        <button class="macro-cell clickable-section" data-inspect="mortality" type="button" title="Click to inspect Custody Mortality records">
+          <span class="macro-label">DEATHS LOGGED (SESSION)</span>
+          <span class="macro-value burden" id="hud-memorial-count">0</span>
+          <span class="macro-sub">Click any section to inspect source</span>
+        </button>
       </div>
 
       <div class="header-actions">
-        <div class="cadence-group" role="group" aria-label="Telemetry Cadence">
-          <button class="cadence-btn active" data-cadence="1" type="button" title="Real-time API polling & natural pacing">1× LIVE</button>
-          <button class="cadence-btn" data-cadence="4" type="button" title="Performance cadence (4× stream velocity)">4× PERF</button>
-          <button class="cadence-btn" data-cadence="16" type="button" title="Accelerated telemetry compression (16×)">16× ACCEL</button>
+        <div class="tuning-bar" aria-label="Live Set Key and Mode">
+          <label class="tuning-pill">
+            <span>KEY</span>
+            <select id="select-key" aria-label="Musical Root Key">
+              <option value="C">C</option>
+              <option value="C#">C# / Db</option>
+              <option value="D" selected>D</option>
+              <option value="D#">D# / Eb</option>
+              <option value="E">E</option>
+              <option value="F">F</option>
+              <option value="F#">F# / Gb</option>
+              <option value="G">G</option>
+              <option value="G#">G# / Ab</option>
+              <option value="A">A</option>
+              <option value="A#">A# / Bb</option>
+              <option value="B">B</option>
+            </select>
+          </label>
+          <label class="tuning-pill">
+            <span>MODE</span>
+            <select id="select-mode" aria-label="Musical Mode">
+              <option value="dorian" selected>Dorian</option>
+              <option value="aeolian">Natural Minor</option>
+              <option value="phrygian">Phrygian</option>
+              <option value="harmonic_minor">Harmonic Minor</option>
+              <option value="major">Major (Ionian)</option>
+              <option value="lydian">Lydian</option>
+              <option value="mixolydian">Mixolydian</option>
+              <option value="pentatonic_minor">Minor Pentatonic</option>
+              <option value="fifths">Open Fifths</option>
+            </select>
+          </label>
         </div>
-        <button id="btn-api-sync" class="action-btn" type="button" title="Manually re-query all live APIs">
-          <span class="btn-glyph">⟳</span> SYNC APIS
+
+        <div class="cadence-group" role="group" aria-label="Data Stream Pace">
+          <button class="cadence-btn active" data-cadence="1" type="button" title="Natural pacing">1×</button>
+          <button class="cadence-btn" data-cadence="4" type="button" title="4× cycle pace">4×</button>
+          <button class="cadence-btn" data-cadence="16" type="button" title="16× cycle pace">16×</button>
+        </div>
+
+        <button id="btn-api-sync" class="action-btn" type="button" title="Refresh all live data sources">⟳ REFRESH</button>
+        <button id="btn-toggle-backend" class="action-btn highlight" type="button" aria-expanded="false" title="Open Synth Engine Backend [B]">
+          SYNTH BACKEND <span class="kbd-tag">B</span>
         </button>
-        <button id="btn-toggle-backend" class="action-btn highlight" type="button" aria-expanded="false" title="Open Vital / Dexed / Serum Synth Backend [B]">
-          <span class="btn-glyph">◈</span> SYNTH ENGINE <span class="kbd-tag">B</span>
-        </button>
-        <button id="btn-fullscreen" class="action-btn icon-only" type="button" title="Toggle Stage Fullscreen [F]">⛶</button>
-        <button id="btn-mute" class="action-btn danger-outline" type="button" title="Mute / Unmute Audio Output [Space / M]">
+        <button id="btn-fullscreen" class="action-btn icon-only" type="button" title="Fullscreen Stage [F]">⛶</button>
+        <button id="btn-mute" class="action-btn danger-outline" type="button" title="Mute / Unmute [Space / M]">
           <span id="mute-label">AUDIO OFF</span> <span class="kbd-tag">M</span>
         </button>
       </div>
     </header>
 
-    <!-- Primary Stage Viewport -->
+    <!-- Primary Visual Stage -->
     <main class="stage-workspace">
-      <section class="visual-stage" aria-label="Real-time Telemetry Visualization">
+      <section class="visual-stage" aria-label="Live Data Visualization">
         <canvas id="telemetry-canvas"></canvas>
 
-        <!-- API Connection Badges (Top-Left Overlay) -->
+        <!-- Minimal Source Status Strip (Click any pill to inspect) -->
         <div class="api-status-strip" id="api-status-strip">
-          <span class="api-pill" data-api="stocks" title="NYSE: CXW & GEO Equity Telemetry">
+          <button class="api-pill clickable-section" data-api="stocks" data-inspect="equity" type="button">
             <i class="dot"></i> CXW/GEO <em id="status-stocks">INIT</em>
-          </span>
-          <span class="api-pill" data-api="usaspending" title="USAspending.gov BOP & ICE Contracts">
+          </button>
+          <button class="api-pill clickable-section" data-api="usaspending" data-inspect="spending" type="button">
             <i class="dot"></i> USASPENDING <em id="status-usaspending">INIT</em>
-          </span>
-          <span class="api-pill" data-api="deaths" title="Incarceration Transparency & UCLA Behind Bars">
+          </button>
+          <button class="api-pill clickable-section" data-api="deaths" data-inspect="mortality" type="button">
             <i class="dot"></i> CUSTODY DEATHS <em id="status-deaths">INIT</em>
-          </span>
-          <span class="api-pill" data-api="community" title="Federal Register BOP & CourtListener Petitions">
+          </button>
+          <button class="api-pill clickable-section" data-api="community" data-inspect="community" type="button">
             <i class="dot"></i> DOCKETS/BOP <em id="status-community">INIT</em>
-          </span>
+          </button>
         </div>
 
-        <!-- Dynamic Struggle Telemetry Readout (Top-Right Overlay) -->
-        <div class="struggle-hud" id="struggle-hud">
-          <div class="hud-row">
-            <span class="hud-k">SANCTUARY BEAUTY</span>
-            <div class="hud-bar-track"><div class="hud-bar-fill sanctuary" id="hud-sanctuary-bar"></div></div>
-            <span class="hud-v" id="hud-sanctuary-val">50%</span>
-          </div>
-          <div class="hud-row">
-            <span class="hud-k">SYSTEMIC PRESSURE</span>
-            <div class="hud-bar-track"><div class="hud-bar-fill pressure" id="hud-pressure-bar"></div></div>
-            <span class="hud-v" id="hud-pressure-val">32%</span>
-          </div>
-          <div class="hud-row">
-            <span class="hud-k">MEMORIAL CONSTELLATION</span>
-            <span class="hud-v stars" id="hud-memorial-count">0 LIVES LOGGED</span>
-          </div>
-        </div>
+        <!-- Minimal 1-Line Active Stream Pill (Bottom-Left) -->
+        <button id="stage-active-pill" class="stage-active-pill" type="button" title="Click to open full data inspector">
+          <span class="stage-pill-badge" id="stage-pill-badge">READY</span>
+          <span class="stage-pill-text" id="stage-pill-text">Click any data card or visual node to inspect source &amp; update cadence.</span>
+        </button>
 
-        <!-- Explicit Active Telemetry Event / Memorial Record Banner -->
-        <aside id="event-banner" class="event-banner" aria-live="polite">
-          <div class="event-badge" id="event-badge">TELEMETRY STREAM READY</div>
-          <div class="event-body">
-            <div class="event-headline" id="event-headline">Awaiting live audio initialization — press INITIALIZE to begin streaming carceral data into the synthesizer.</div>
-            <div class="event-meta" id="event-meta">Sources: USAspending API v2 · Incarceration Transparency DB · UCLA Behind Bars · NYSE CXW/GEO · Federal Register BOP</div>
+        <!-- Bare-Bones Interactive Data Inspector Panel (Opens on section click) -->
+        <aside id="data-inspector" class="data-inspector hidden" aria-live="polite" aria-label="Selected Data Source Details">
+          <div class="inspector-header">
+            <div class="inspector-title-row">
+              <h2 id="inspector-title">SECTION DETAILS</h2>
+              <span class="inspector-status-tag" id="inspector-status">LIVE</span>
+            </div>
+            <button id="btn-close-inspector" class="inspector-close" type="button" aria-label="Close Inspector">✕</button>
           </div>
-          <div class="event-patch" id="event-patch">PATCH: STANDBY</div>
+
+          <div class="inspector-meta-grid">
+            <div class="inspector-field">
+              <span class="field-k">SOURCE</span>
+              <span class="field-v" id="inspector-source">—</span>
+            </div>
+            <div class="inspector-field">
+              <span class="field-k">WHAT IT INDICATES</span>
+              <span class="field-v" id="inspector-meaning">—</span>
+            </div>
+            <div class="inspector-field">
+              <span class="field-k">UPDATE FREQUENCY</span>
+              <span class="field-v" id="inspector-cadence">—</span>
+            </div>
+            <div class="inspector-field">
+              <span class="field-k">LAST UPDATED</span>
+              <span class="field-v mono" id="inspector-updated">—</span>
+            </div>
+          </div>
+
+          <div class="inspector-records-wrap">
+            <div class="field-k">CURRENT RECORDS</div>
+            <div id="inspector-records" class="inspector-records"></div>
+          </div>
+
+          <div class="inspector-footer">
+            <button id="btn-inspector-next" class="pulse-mini-btn" type="button">NEXT RECORD</button>
+          </div>
         </aside>
 
         <!-- Inspectable Memorial Star Tooltip -->
         <div id="memorial-tooltip" class="memorial-tooltip hidden" role="dialog" aria-hidden="true"></div>
       </section>
 
-      <!-- Frontend Data-LFO Mixer Console + Struggle Pad -->
-      <section class="mixer-console" aria-label="Data-LFO Mixer Console">
+      <!-- Sparse Frontend Data Mixer (No synth jargon; click any card to highlight & inspect) -->
+      <section class="mixer-console" aria-label="Data Stream Mixer">
         <!-- CH 01: Private Prison Equity -->
-        <article class="lfo-channel ch-equity" data-channel="equity">
+        <article class="lfo-channel ch-equity" data-section="equity">
           <div class="ch-header">
-            <div>
-              <span class="ch-num">CH 01 // LFO</span>
-              <h2 class="ch-title">PRIVATE PRISON EQUITY</h2>
+            <div class="ch-title-wrap">
+              <span class="ch-num">01 // PRIVATE PRISON STOCK</span>
+              <h2 class="ch-title">CXW · GEO</h2>
             </div>
-            <span class="ch-source-tag">NYSE: CXW · GEO</span>
+            <button class="info-pill-btn" data-inspect="equity" type="button">INFO</button>
           </div>
 
-          <div class="ch-live-box">
-            <div class="ticker-pair" id="ch1-ticker-readout">
-              <span class="t-sym">CXW</span> <span class="t-price" id="cxw-price">$17.84</span> <span class="t-chg up" id="cxw-chg">+0.00%</span>
-              <span class="t-sep">|</span>
-              <span class="t-sym">GEO</span> <span class="t-price" id="geo-price">$24.62</span> <span class="t-chg up" id="geo-chg">+0.00%</span>
+          <div class="ch-stat-row">
+            <div class="ch-primary-val" id="ch1-primary">
+              CXW <span id="cxw-price">$18.42</span> <em class="t-chg up" id="cxw-chg">+1.88%</em>
+              <span class="t-sep">/</span>
+              GEO <span id="geo-price">$24.85</span> <em class="t-chg up" id="geo-chg">+2.26%</em>
             </div>
-            <div class="ch-sub-meta" id="ch1-meta">SEC CIK 0001070985 / 0000923796 · Polling</div>
+            <div class="ch-updated-line" id="ch1-updated">Updated 0s ago · 25s poll</div>
           </div>
 
           <div class="lfo-scope-row">
-            <span class="lfo-lbl">LFO OUT</span>
             <div class="lfo-meter"><div class="lfo-fill equity" id="lfo-bar-equity"></div></div>
             <span class="lfo-pct" id="lfo-pct-equity">0%</span>
           </div>
 
           <div class="fader-group">
             <label for="agg-equity" class="fader-label">
-              <span>AGGRESSION</span>
+              <span>DATA WEIGHT</span>
               <span class="fader-val" id="agg-val-equity">100%</span>
             </label>
             <input id="agg-equity" class="mixer-slider equity" type="range" min="0" max="200" value="100" step="1" />
           </div>
 
-          <div class="ch-controls-row">
-            <select id="mode-equity" class="mode-select" aria-label="Channel 1 LFO Conditioning Mode">
-              <option value="slew">LFO: SLEW SMOOTH</option>
-              <option value="step">LFO: STEPPED S&amp;H</option>
-              <option value="spike">LFO: VELOCITY SPIKE</option>
-            </select>
-            <button id="btn-pulse-equity" class="pulse-mini-btn" type="button" title="Inject a live market quote / earnings shock">PULSE TICK</button>
-          </div>
-
-          <div class="routing-tag" id="route-equity">
-            ──► FM METALLIC INDEX · DETUNE · CELL COMB
+          <div class="ch-footer-row">
+            <span class="ch-src-caption">NYSE Market Feed</span>
+            <button id="btn-pulse-equity" class="pulse-mini-btn" type="button">PULSE TICK</button>
           </div>
         </article>
 
         <!-- CH 02: Federal Carceral Spending -->
-        <article class="lfo-channel ch-spending" data-channel="spending">
+        <article class="lfo-channel ch-spending" data-section="spending">
           <div class="ch-header">
-            <div>
-              <span class="ch-num">CH 02 // LFO</span>
-              <h2 class="ch-title">FEDERAL CARCERAL SPEND</h2>
+            <div class="ch-title-wrap">
+              <span class="ch-num">02 // FEDERAL CONTRACTS</span>
+              <h2 class="ch-title">BOP &amp; ICE SPEND</h2>
             </div>
-            <span class="ch-source-tag">USASPENDING.GOV</span>
+            <button class="info-pill-btn" data-inspect="spending" type="button">INFO</button>
           </div>
 
-          <div class="ch-live-box">
-            <div class="ticker-pair" id="ch2-contract-readout">Loading BOP &amp; ICE federal contracts…</div>
-            <div class="ch-sub-meta" id="ch2-meta">DOJ Code 015 (Bureau of Prisons) &amp; DHS ICE</div>
+          <div class="ch-stat-row">
+            <div class="ch-primary-val" id="ch2-primary">$148.62M · GEO GROUP</div>
+            <div class="ch-updated-line" id="ch2-updated">Updated 0s ago · USAspending API</div>
           </div>
 
           <div class="lfo-scope-row">
-            <span class="lfo-lbl">LFO OUT</span>
             <div class="lfo-meter"><div class="lfo-fill spending" id="lfo-bar-spending"></div></div>
             <span class="lfo-pct" id="lfo-pct-spending">0%</span>
           </div>
 
           <div class="fader-group">
             <label for="agg-spending" class="fader-label">
-              <span>AGGRESSION</span>
+              <span>DATA WEIGHT</span>
               <span class="fader-val" id="agg-val-spending">100%</span>
             </label>
             <input id="agg-spending" class="mixer-slider spending" type="range" min="0" max="200" value="100" step="1" />
           </div>
 
-          <div class="ch-controls-row">
-            <select id="mode-spending" class="mode-select" aria-label="Channel 2 LFO Conditioning Mode">
-              <option value="slew">LFO: SLEW SMOOTH</option>
-              <option value="step">LFO: STEPPED S&amp;H</option>
-              <option value="spike">LFO: VELOCITY SPIKE</option>
-            </select>
-            <button id="btn-pulse-contract" class="pulse-mini-btn" type="button" title="Cycle & audition the next Federal Contract Award [C]">PULSE AWARD</button>
-          </div>
-
-          <div class="routing-tag" id="route-spending">
-            ──► WAVEFOLDER CRUSH · SUB PRESSURE · DUCK
+          <div class="ch-footer-row">
+            <span class="ch-src-caption">USAspending.gov</span>
+            <button id="btn-pulse-contract" class="pulse-mini-btn" type="button">NEXT AWARD</button>
           </div>
         </article>
 
-        <!-- CH 03: Mortality Behind Bars -->
-        <article class="lfo-channel ch-mortality" data-channel="mortality">
+        <!-- CH 03: Deaths in Custody -->
+        <article class="lfo-channel ch-mortality" data-section="mortality">
           <div class="ch-header">
-            <div>
-              <span class="ch-num">CH 03 // RUPTURE</span>
-              <h2 class="ch-title">CUSTODY MORTALITY</h2>
+            <div class="ch-title-wrap">
+              <span class="ch-num">03 // CUSTODY MORTALITY</span>
+              <h2 class="ch-title">DEATHS BEHIND BARS</h2>
             </div>
-            <span class="ch-source-tag">INCARC. TRANSP. / UCLA</span>
+            <button class="info-pill-btn" data-inspect="mortality" type="button">INFO</button>
           </div>
 
-          <div class="ch-live-box">
-            <div class="ticker-pair mortality-readout" id="ch3-death-readout">Awaiting custody mortality stream…</div>
-            <div class="ch-sub-meta" id="ch3-meta">Pre-trial &amp; facility mortality records</div>
+          <div class="ch-stat-row">
+            <div class="ch-primary-val mortality-readout" id="ch3-primary">Awaiting records…</div>
+            <div class="ch-updated-line" id="ch3-updated">Updated 0s ago · UCLA / IT DB</div>
           </div>
 
           <div class="lfo-scope-row">
-            <span class="lfo-lbl">SHOCK</span>
             <div class="lfo-meter"><div class="lfo-fill mortality" id="lfo-bar-mortality"></div></div>
             <span class="lfo-pct" id="lfo-pct-mortality">0%</span>
           </div>
 
           <div class="fader-group">
             <label for="agg-mortality" class="fader-label">
-              <span>HARSHNESS / RUPTURE</span>
+              <span>DATA WEIGHT</span>
               <span class="fader-val" id="agg-val-mortality">125%</span>
             </label>
             <input id="agg-mortality" class="mixer-slider mortality" type="range" min="0" max="200" value="125" step="1" />
           </div>
 
-          <div class="ch-controls-row">
-            <select id="mode-mortality" class="mode-select" aria-label="Channel 3 Death Event Cadence">
-              <option value="spike">EVENT: HARSH RUPTURE</option>
-              <option value="slew">EVENT: SUSTAINED GRIEF</option>
-              <option value="step">EVENT: STARK GATE</option>
-            </select>
-            <button id="btn-pulse-death" class="pulse-mini-btn death-btn" type="button" title="Sonify & memorialize a custody death record immediately [D]">PULSE DEATH RECORD</button>
-          </div>
-
-          <div class="routing-tag" id="route-mortality">
-            ──► BITCRUSH TEAR · IRON FM SLAM · MEMORIAL BELL
+          <div class="ch-footer-row">
+            <span class="ch-src-caption">UCLA Behind Bars / IT</span>
+            <button id="btn-pulse-death" class="pulse-mini-btn death-btn" type="button">PULSE RECORD</button>
           </div>
         </article>
 
-        <!-- CH 04: Community Impact & Legal Resistance -->
-        <article class="lfo-channel ch-community" data-channel="community">
+        <!-- CH 04: Courts & Families -->
+        <article class="lfo-channel ch-community" data-section="community">
           <div class="ch-header">
-            <div>
-              <span class="ch-num">CH 04 // SANCTUARY</span>
-              <h2 class="ch-title">COMMUNITY &amp; PETITIONS</h2>
+            <div class="ch-title-wrap">
+              <span class="ch-num">04 // COURTS &amp; FAMILIES</span>
+              <h2 class="ch-title">PETITIONS &amp; BOP</h2>
             </div>
-            <span class="ch-source-tag">DOCKETS · BOP · VERA</span>
+            <button class="info-pill-btn" data-inspect="community" type="button">INFO</button>
           </div>
 
-          <div class="ch-live-box">
-            <div class="ticker-pair" id="ch4-community-readout">Loading habeas dockets &amp; BOP notices…</div>
-            <div class="ch-sub-meta" id="ch4-meta">Civil rights filings &amp; family impact index</div>
+          <div class="ch-stat-row">
+            <div class="ch-primary-val" id="ch4-primary">2.7M children impacted</div>
+            <div class="ch-updated-line" id="ch4-updated">Updated 0s ago · Daily filings</div>
           </div>
 
           <div class="lfo-scope-row">
-            <span class="lfo-lbl">BLOOM</span>
             <div class="lfo-meter"><div class="lfo-fill community" id="lfo-bar-community"></div></div>
             <span class="lfo-pct" id="lfo-pct-community">0%</span>
           </div>
 
           <div class="fader-group">
             <label for="agg-community" class="fader-label">
-              <span>RESONANCE / INFLUENCE</span>
+              <span>DATA WEIGHT</span>
               <span class="fader-val" id="agg-val-community">110%</span>
             </label>
             <input id="agg-community" class="mixer-slider community" type="range" min="0" max="200" value="110" step="1" />
           </div>
 
-          <div class="ch-controls-row">
-            <select id="mode-community" class="mode-select" aria-label="Channel 4 LFO Conditioning Mode">
-              <option value="slew">LFO: BREATHING CHOIR</option>
-              <option value="step">LFO: DOCKET STEP</option>
-              <option value="spike">LFO: PETITION SURGE</option>
-            </select>
-            <button id="btn-pulse-community" class="pulse-mini-btn sanctuary-btn" type="button" title="Audition next civil rights filing / BOP notice">PULSE FILING</button>
-          </div>
-
-          <div class="routing-tag" id="route-community">
-            ──► FORMANT CRY · SANCTUARY CHOIR · SHIMMER
+          <div class="ch-footer-row">
+            <span class="ch-src-caption">Fed. Register / Dockets</span>
+            <button id="btn-pulse-community" class="pulse-mini-btn sanctuary-btn" type="button">NEXT FILING</button>
           </div>
         </article>
 
-        <!-- Master Expression Pad: Human Sanctuary vs. Systemic Gravity -->
-        <article class="expression-panel" aria-label="Human Sanctuary versus Systemic Gravity Controller">
+        <!-- Master Struggle Controller -->
+        <article class="expression-panel" aria-label="Human versus System Balance">
           <div class="ch-header">
-            <div>
-              <span class="ch-num">EXPRESSION // STRUGGLE</span>
-              <h2 class="ch-title">HUMAN SANCTUARY XY</h2>
+            <div class="ch-title-wrap">
+              <span class="ch-num">BALANCE</span>
+              <h2 class="ch-title">HUMAN vs. SYSTEM</h2>
             </div>
-            <button id="btn-latch-sanctuary" class="latch-pill" type="button" title="Toggle Sanctuary Hold / Latch [S]">LATCH OFF</button>
+            <button id="btn-latch-sanctuary" class="latch-pill" type="button" title="Hold balance position [S]">LATCH OFF</button>
           </div>
 
-          <div id="struggle-xy-pad" class="xy-pad" role="slider" aria-label="2D Performance Pad: Horizontal controls Harmonic Morph, Vertical pushes Human Sanctuary Beauty against Systemic Compression" tabindex="0">
+          <div id="struggle-xy-pad" class="xy-pad" role="slider" aria-label="Push upward to bring out human tone against incoming system data" tabindex="0">
             <div class="xy-grid"></div>
-            <div class="xy-axis-label top">↑ PUSH FOR BEAUTY (OPEN CHOIR)</div>
-            <div class="xy-axis-label bottom">↓ SYSTEMIC GRAVITY</div>
-            <div class="xy-axis-label left">WARM ORGAN</div>
-            <div class="xy-axis-label right">VOCAL GLASS</div>
+            <div class="xy-axis-label top">↑ PUSH FOR HUMANITY</div>
+            <div class="xy-axis-label bottom">↓ SYSTEM WEIGHT</div>
+            <div class="xy-axis-label left">WARM</div>
+            <div class="xy-axis-label right">CLEAR</div>
             <div id="xy-resistance-halo" class="xy-resistance-halo"></div>
             <div id="xy-puck" class="xy-puck"></div>
           </div>
 
           <div class="fader-group compact">
             <label for="sanctuary-push-slider" class="fader-label">
-              <span>SANCTUARY FORCE (FIGHTS DATA)</span>
+              <span>HUMAN FORCE</span>
               <span class="fader-val" id="sanctuary-push-val">55%</span>
             </label>
             <input id="sanctuary-push-slider" class="mixer-slider sanctuary" type="range" min="0" max="100" value="55" step="1" />
@@ -326,41 +335,72 @@
       </section>
     </main>
 
-    <!-- Collapsible Backend Synth Engine Drawer (Vital · Dexed · Serum Architecture) -->
+    <!-- Collapsible Synth Engine Backend Drawer (All Synth Engine Controls Live Here) -->
     <aside id="synth-backend-drawer" class="backend-drawer collapsed" aria-hidden="true">
       <div class="drawer-header">
         <div class="drawer-title-group">
           <span class="drawer-badge">SYNTH ENGINE BACKEND</span>
-          <h3>HYBRID WAVETABLE (VITAL/SERUM) · 4-OP FM (DEXED) · 3-BAND SCULPTURAL NOISE</h3>
+          <h3>WAVETABLE CHOIR (VITAL/SERUM) · 4-OP FM (DEXED) · 3-BAND NOISE · DATA LFO MODES</h3>
         </div>
         <div class="drawer-preset-bar">
           <label for="preset-select">PRESET:</label>
           <select id="preset-select">
-            <option value="elegy">01 // Iron &amp; Elegy (Balanced Live Performance)</option>
-            <option value="panopticon">02 // Concrete Panopticon (Harsh Surveillance)</option>
-            <option value="sanctuary">03 // Cathedral Underneath (Choir Focus)</option>
-            <option value="stock_shock">04 // Ticker Fracture (Hyper-Volatile FM)</option>
-            <option value="memorial">05 // Vigil &amp; Bell (Deep Sub &amp; Memorial Chimes)</option>
+            <option value="elegy">01 // Iron &amp; Elegy</option>
+            <option value="panopticon">02 // Concrete Panopticon</option>
+            <option value="sanctuary">03 // Cathedral Underneath</option>
+            <option value="stock_shock">04 // Ticker Fracture</option>
+            <option value="memorial">05 // Vigil &amp; Bell</option>
           </select>
           <button id="btn-close-backend" class="action-btn" type="button">CLOSE [B]</button>
         </div>
       </div>
 
       <div class="drawer-grid">
-        <!-- Module 1: Vital / Serum Wavetable Sanctuary Bed -->
+        <!-- Module 1: Tuning + Wavetable Choir -->
         <div class="synth-module">
           <div class="module-head">
-            <span>I. WAVETABLE CHOIR (VITAL / SERUM)</span>
-            <em>BEAUTY UNDERNEATH</em>
+            <span>I. KEY, MODE &amp; WAVETABLE CHOIR</span>
+            <em>VITAL / SERUM</em>
           </div>
           <div class="knob-grid">
+            <div class="dual-select-row">
+              <label class="param-control">
+                <span>ROOT KEY</span>
+                <select id="backend-select-key">
+                  <option value="C">C</option>
+                  <option value="C#">C# / Db</option>
+                  <option value="D" selected>D</option>
+                  <option value="D#">D# / Eb</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="F#">F# / Gb</option>
+                  <option value="G">G</option>
+                  <option value="G#">G# / Ab</option>
+                  <option value="A">A</option>
+                  <option value="A#">A# / Bb</option>
+                  <option value="B">B</option>
+                </select>
+              </label>
+              <label class="param-control">
+                <span>MODE</span>
+                <select id="backend-select-mode">
+                  <option value="dorian" selected>Dorian</option>
+                  <option value="aeolian">Natural Minor</option>
+                  <option value="phrygian">Phrygian</option>
+                  <option value="harmonic_minor">Harmonic Minor</option>
+                  <option value="major">Major (Ionian)</option>
+                  <option value="lydian">Lydian</option>
+                  <option value="mixolydian">Mixolydian</option>
+                  <option value="pentatonic_minor">Minor Pentatonic</option>
+                  <option value="fifths">Open Fifths</option>
+                </select>
+              </label>
+            </div>
             <label class="param-control">
-              <span>TUNING SCALE</span>
-              <select id="param-scale">
-                <option value="dmin9">D Minor 9 Elegy</option>
-                <option value="just">Just Intonation Sanctuary</option>
-                <option value="quartal">Quartal Choir (Open 4ths)</option>
-                <option value="drone">Deep Root Octave Drone</option>
+              <span>REFERENCE TUNING (A4)</span>
+              <select id="param-a4">
+                <option value="440" selected>A = 440 Hz (Standard)</option>
+                <option value="432">A = 432 Hz</option>
               </select>
             </label>
             <label class="param-control">
@@ -372,7 +412,7 @@
               <input id="param-detune" type="range" min="0" max="60" value="18" />
             </label>
             <label class="param-control">
-              <span>SANCTUARY CUTOFF <em id="val-cutoff">1450 Hz</em></span>
+              <span>CHOIR CUTOFF <em id="val-cutoff">1450 Hz</em></span>
               <input id="param-cutoff" type="range" min="180" max="6500" value="1450" />
             </label>
             <label class="param-control">
@@ -382,11 +422,11 @@
           </div>
         </div>
 
-        <!-- Module 2: Dexed 4-Operator FM Metallic Engine -->
+        <!-- Module 2: Dexed 4-Operator FM Engine -->
         <div class="synth-module">
           <div class="module-head">
-            <span>II. 4-OP FM METALLIC ENGINE (DEXED)</span>
-            <em>CARCERAL APPARATUS</em>
+            <span>II. 4-OP FM ENGINE</span>
+            <em>DEXED</em>
           </div>
           <div class="knob-grid">
             <label class="param-control">
@@ -394,15 +434,15 @@
               <input id="param-fmDepth" type="range" min="0" max="100" value="42" />
             </label>
             <label class="param-control">
-              <span>OP2 RATIO (IRON BAR) <em id="val-fmRatio1">1.41</em></span>
+              <span>OP2 RATIO <em id="val-fmRatio1">1.41</em></span>
               <input id="param-fmRatio1" type="range" min="50" max="500" value="141" />
             </label>
             <label class="param-control">
-              <span>OP3 RATIO (GATE CLANG) <em id="val-fmRatio2">2.72</em></span>
+              <span>OP3 RATIO <em id="val-fmRatio2">2.72</em></span>
               <input id="param-fmRatio2" type="range" min="50" max="700" value="272" />
             </label>
             <label class="param-control">
-              <span>OP4 RATIO (BALLAST) <em id="val-fmRatio3">3.83</em></span>
+              <span>OP4 RATIO <em id="val-fmRatio3">3.83</em></span>
               <input id="param-fmRatio3" type="range" min="100" max="900" value="383" />
             </label>
             <label class="param-control">
@@ -412,23 +452,23 @@
           </div>
         </div>
 
-        <!-- Module 3: 3-Band Noise, Wavefolder, Bitcrush & Cell Comb -->
+        <!-- Module 3: 3-Band Noise, Crush & Cell Comb -->
         <div class="synth-module">
           <div class="module-head">
-            <span>III. 3-BAND NOISE · CRUSH · CELL ACOUSTICS</span>
-            <em>SYSTEMIC FRICTION</em>
+            <span>III. NOISE, FOLD &amp; COMB</span>
+            <em>DSP TEXTURE</em>
           </div>
           <div class="knob-grid">
             <label class="param-control">
-              <span>SUB CONCRETE RUMBLE <em id="val-noiseSub">36%</em></span>
+              <span>SUB RUMBLE NOISE <em id="val-noiseSub">36%</em></span>
               <input id="param-noiseSub" type="range" min="0" max="100" value="36" />
             </label>
             <label class="param-control">
-              <span>SURVEILLANCE STATIC <em id="val-noiseMid">24%</em></span>
+              <span>MID STATIC NOISE <em id="val-noiseMid">24%</em></span>
               <input id="param-noiseMid" type="range" min="0" max="100" value="24" />
             </label>
             <label class="param-control">
-              <span>RAZOR SHARDS NOISE <em id="val-noiseHigh">16%</em></span>
+              <span>HIGH SHARD NOISE <em id="val-noiseHigh">16%</em></span>
               <input id="param-noiseHigh" type="range" min="0" max="100" value="16" />
             </label>
             <label class="param-control">
@@ -446,76 +486,86 @@
           </div>
         </div>
 
-        <!-- Module 4: Space, Safety Limiter & Live Market API Key -->
+        <!-- Module 4: Data LFO Modes, Space, Limiter & Stock Key -->
         <div class="synth-module">
           <div class="module-head">
-            <span>IV. SPACE · SAFETY · LIVE API CONFIG</span>
-            <em>STAGE RELIABILITY</em>
+            <span>IV. DATA LFO MODES &amp; OUTPUT</span>
+            <em>ROUTING</em>
           </div>
           <div class="knob-grid">
+            <div class="dual-select-row">
+              <label class="param-control">
+                <span>CH 01 LFO (STOCKS)</span>
+                <select id="mode-equity">
+                  <option value="slew" selected>Slew Smooth</option>
+                  <option value="step">Stepped S&amp;H</option>
+                  <option value="spike">Velocity Spike</option>
+                </select>
+              </label>
+              <label class="param-control">
+                <span>CH 02 LFO (SPEND)</span>
+                <select id="mode-spending">
+                  <option value="slew" selected>Slew Smooth</option>
+                  <option value="step">Stepped S&amp;H</option>
+                  <option value="spike">Velocity Spike</option>
+                </select>
+              </label>
+            </div>
+            <div class="dual-select-row">
+              <label class="param-control">
+                <span>CH 03 LFO (DEATHS)</span>
+                <select id="mode-mortality">
+                  <option value="spike" selected>Harsh Rupture</option>
+                  <option value="slew">Sustained</option>
+                  <option value="step">Stepped Gate</option>
+                </select>
+              </label>
+              <label class="param-control">
+                <span>CH 04 LFO (COURTS)</span>
+                <select id="mode-community">
+                  <option value="slew" selected>Smooth Choir</option>
+                  <option value="step">Stepped</option>
+                  <option value="spike">Petition Surge</option>
+                </select>
+              </label>
+            </div>
             <label class="param-control">
-              <span>CATHEDRAL REVERB <em id="val-reverb">54%</em></span>
+              <span>REVERB MIX <em id="val-reverb">54%</em></span>
               <input id="param-reverb" type="range" min="0" max="100" value="54" />
             </label>
             <label class="param-control">
-              <span>TAPE DELAY ECHO <em id="val-delay">30%</em></span>
+              <span>TAPE DELAY <em id="val-delay">30%</em></span>
               <input id="param-delay" type="range" min="0" max="100" value="30" />
             </label>
             <label class="param-control">
-              <span>MASTER OUTPUT GAIN <em id="val-masterVol">78%</em></span>
+              <span>MASTER VOLUME <em id="val-masterVol">78%</em></span>
               <input id="param-masterVol" type="range" min="0" max="100" value="78" />
             </label>
             <div class="api-key-box">
-              <label for="finnhub-key-input">OPTIONAL FINNHUB KEY (REAL-TIME CXW/GEO QUOTES)</label>
+              <label for="finnhub-key-input">OPTIONAL FINNHUB KEY (REAL-TIME CXW/GEO)</label>
               <div class="key-input-row">
-                <input id="finnhub-key-input" type="password" placeholder="Paste free finnhub.io token (optional)" autocomplete="off" />
+                <input id="finnhub-key-input" type="password" placeholder="finnhub.io token (optional)" autocomplete="off" />
                 <button id="btn-save-finnhub" class="action-btn" type="button">APPLY</button>
               </div>
             </div>
             <div class="safety-badge-row">
-              <span class="safety-chip">BRICKWALL LIMITER: -2.0 dBFS ACTIVE</span>
-              <span class="safety-chip" id="worklet-status-chip">DSP: INITIALIZING</span>
+              <span class="safety-chip">LIMITER: -2.0 dBFS</span>
+              <span class="safety-chip" id="worklet-status-chip">DSP: STANDBY</span>
             </div>
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- Entry Curtain Overlay (Required for Mobile/Desktop Web Audio Gesture Unlock) -->
+    <!-- Minimal Entry Overlay -->
     <section id="entry-curtain" class="curtain-backdrop" role="dialog" aria-modal="true" aria-labelledby="curtain-heading">
-      <div class="curtain-card">
-        <div class="curtain-kicker">LIVE DATA-SONIFICATION INSTRUMENT // USA CARCERAL TELEMETRY</div>
-        <h1 id="curtain-heading" class="curtain-title">CELL // SIGNAL</h1>
-        <p class="curtain-lead">
-          An audio-visual drone machine driven by live U.S. carceral telemetry. Underneath sits a harmonic human sanctuary choir. Pressing down from above is the acoustic weight of private prison stock ticks, federal BOP/ICE spending, and custody mortality records.
+      <div class="curtain-card minimal">
+        <h1 id="curtain-heading" class="curtain-title">JUSTICE SYNTH</h1>
+        <p class="curtain-lead-plain">
+          Live U.S. incarceration spending, private prison stock, and custody mortality data.
         </p>
-
-        <div class="curtain-sources">
-          <div class="source-item">
-            <strong>NYSE: CXW &amp; GEO</strong>
-            <span>CoreCivic &amp; GEO Group stock velocity modulates inharmonic 4-Op FM metal &amp; pitch tension.</span>
-          </div>
-          <div class="source-item">
-            <strong>USAspending.gov API v2</strong>
-            <span>Federal Bureau of Prisons &amp; ICE contracts drive wavefolding, sub-pressure, and choir ducking.</span>
-          </div>
-          <div class="source-item">
-            <strong>Incarceration Transparency &amp; UCLA</strong>
-            <span>Custody death records trigger harsh bitcrushed ruptures and persistent memorial bells.</span>
-          </div>
-          <div class="source-item">
-            <strong>CourtListener &amp; Federal Register</strong>
-            <span>Prisoner habeas petitions &amp; community metrics awaken the formant choir beneath the noise.</span>
-          </div>
-        </div>
-
         <div class="curtain-actions">
-          <button id="btn-initialize-engine" class="init-btn" type="button">
-            INITIALIZE TELEMETRY &amp; AUDIO ENGINE
-          </button>
-          <p class="curtain-hint">
-            Mobile &amp; Live Stage Safe · Brickwall Limited (-2 dBFS) · Shortcuts: <code>Space/M</code> Mute · <code>D</code> Pulse Death Record · <code>C</code> Pulse Contract · <code>B</code> Synth Backend
-          </p>
+          <button id="btn-initialize-engine" class="init-btn" type="button">START SYNTH</button>
         </div>
       </div>
     </section>

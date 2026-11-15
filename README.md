@@ -1,36 +1,27 @@
-# CELL // SIGNAL — Carceral Industrial Telemetry & Drone Synthesizer
+# JUSTICE SYNTH
 
-A live-performance Web Audio synthesizer and telemetry instrument that transforms real-time and near-real-time data from the United States prison-industrial complex into a dual-layer soundscape and explicit stage visualization.
+A live-performance Web Audio synthesizer and visual telemetry instrument driven by U.S. incarceration spending, private prison equities, custody mortality records, and prisoner civil-rights filings.
 
-## Sonic Philosophy: Beauty Underneath vs. Systemic Suppression
+## Key Features
 
-* **Layer I — The Human Sanctuary Bed (Vital / Serum-Inspired Wavetable Choir):** A warm, lush multi-voice stereo wavetable choir with formant morphing, sub-harmonic heartbeat, and cathedral shimmer reverb.
-* **Layer II — The Carceral Apparatus (Dexed 4-Operator FM + 3-Band Industrial Noise + AudioWorklet Wavefolder/Bitcrusher + Cell Comb):** Inharmonic metallic FM ratios (`1 : 1.41 : 2.72 : 3.83`), 60Hz fluorescent ballast hum, concrete cell acoustic comb resonance, and sculptural noise.
-* **The Struggle:** As incoming carceral telemetry rises, the system compresses, detunes, wavefolds, and constricts the sanctuary choir. The performer uses the **Human Sanctuary XY / Struggle Pad** to push beauty upward through the systemic gravity.
-* **Custody Death Rupture:** Each custody mortality record triggers an aggressive FM iron-slam, bitcrushed noise tear, momentary sanctuary breath cutout, and a lingering memorial bell tuned from the decedent's age, `days_incarcerated`, and `trial_status` (adding a dissonant tritone partial for unconvicted pre-trial detainees), while placing an inspectable star in the upper Memorial Constellation.
+* **Visual-First Data Console:** Interactive data nodes, memorial constellation, and dual oscilloscope with zero synth jargon on the frontend.
+* **Bare-Bones Data Inspector:** Click any section, channel card, `INFO` button, or visual node to inspect the exact source, what the metric indicates, update cadence, `Last updated` timestamp, and un-truncated records.
+* **Full Key & Mode Support:** Transpose the entire instrument across all 12 root keys (`C`–`B`), 9 musical modes (`Dorian`, `Natural Minor`, `Phrygian`, `Harmonic Minor`, `Major`, `Lydian`, `Mixolydian`, `Minor Pentatonic`, `Open Fifths`), and `440 Hz` / `432 Hz` reference tuning for live sets with other instruments.
+* **Hybrid Synth Engine Backend (`B`):** Vital/Serum-style wavetable choir, Dexed-style 4-Operator FM metallic cluster, 3-band sculptural noise, concrete cell comb resonator, and custom `AudioWorklet` wavefolder/bitcrusher protected by a `-2.0 dBFS` brickwall limiter.
 
-## Live & Near-Real-Time Telemetry Sources
+## Live Telemetry Sources
 
-1. **Private Prison Equity (`NYSE: CXW` CoreCivic & `NYSE: GEO` The GEO Group):** Live intraday market quotes (via Yahoo Finance / optional Finnhub token) and SEC EDGAR CIK anchors (`0001070985`, `0000923796`) driving FM metallic index, pitch detune, and cell comb tension.
-2. **Federal Carceral Spending (`USAspending.gov API v2`):** Live federal BOP / DHS ICE contract awards to private detention operators (`CoreCivic`, `GEO Group`, `Management & Training`) plus the continuous `$2,560.55/sec` direct corrections & `$5,771.18/sec` total societal burden ticker.
-3. **Custody Mortality (`Incarceration Transparency API` & `UCLA Law Behind Bars`):** Facility-level custody death records driving bitcrush rupture, noise tear, and memorial bells.
-4. **Legal Resistance & Community Impact (`Federal Register BOP API`, `CourtListener`, & `Vera / PPI`):** Live Bureau of Prisons notices, federal prisoner civil-rights opinions, and community impact data driving the formant choir beneath the noise.
+1. **Private Prison Stock (`NYSE: CXW`, `NYSE: GEO`):** Intraday equity quotes / market close tape (`SEC CIK 0001070985` / `0000923796`).
+2. **Federal Carceral Spending (`USAspending.gov API v2`):** DOJ Bureau of Prisons & DHS ICE contract awards plus continuous session expenditure (`$2,560.55/sec` direct, `$5,771.18/sec` total burden).
+3. **Custody Mortality (`UCLA Law Behind Bars` & `Incarceration Transparency`):** Individual BOP, ICE detention, and jail mortality records.
+4. **Courts & Families (`Federal Register BOP API`, `CourtListener`, `Vera / PPI`):** Live Bureau of Prisons notices, prisoner civil-rights filings, and family/pre-trial metrics.
 
-## Live Performance Controls & Shortcuts
+## Live Shortcuts
 
-* **`Space` / `M`**: Mute / Unmute Audio Output (Brickwall Limiter active at `-2.0 dBFS`)
-* **`D`**: Immediately pulse and memorialize the next Custody Death Record
-* **`C`**: Immediately pulse the next Federal Contract Award
-* **`S`**: Toggle Sanctuary Latch (hold beauty upward against systemic gravity)
-* **`B`**: Toggle the collapsible Synth Engine Backend Drawer (Vital / Dexed / Serum parameters & 5 presets)
-* **`F`**: Toggle Stage Fullscreen Mode
-
-## Running Locally & Deploying to GitHub Pages
-
-Because `CELL // SIGNAL` uses pure ES modules with zero build step, any static HTTPS or `localhost` server works immediately:
-
-```bash
-python3 -m http.server 8090
-```
-
-Then open `http://localhost:8090` on desktop or mobile. To deploy online for mobile live performance, push this directory to GitHub and enable **Settings → Pages → GitHub Actions** (the included `.github/workflows/deploy.yml` publishes automatically on push to `main`).
+* **`Space` / `M`**: Mute / Unmute Audio
+* **`D`**: Pulse Custody Death Record
+* **`C`**: Pulse Federal Contract Award
+* **`S`**: Latch Human Force Balance
+* **`B`**: Toggle Synth Engine Backend Drawer
+* **`F`**: Toggle Fullscreen Stage
+* **`Esc`**: Close Data Inspector

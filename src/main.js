@@ -1,7 +1,7 @@
 /**
- * CELL // SIGNAL — Main Orchestration Controller
- * Connects live carceral telemetry streams to the hybrid Web Audio synthesizer
- * and 60fps stage visualization.
+ * JUSTICE SYNTH — Main Orchestration Controller
+ * Connects live U.S. carceral data streams, interactive bare-bones data inspector,
+ * full musical key/mode transposition, and hybrid Web Audio synthesizer.
  */
 
 import { TelemetryEngine } from './data/telemetryEngine.js';
@@ -12,7 +12,13 @@ const telemetry = new TelemetryEngine();
 const synth = new CarceralSynthEngine();
 const canvas = document.getElementById('telemetry-canvas');
 const tooltipEl = document.getElementById('memorial-tooltip');
-const visualizer = new TelemetryVisualizer(canvas, tooltipEl);
+
+let activeInspectorSection = null;
+let lastStageSection = 'spending';
+
+const visualizer = new TelemetryVisualizer(canvas, tooltipEl, (nodeKey) => {
+  openInspector(nodeKey);
+});
 
 const dom = {
   curtain: document.getElementById('entry-curtain'),
@@ -26,33 +32,42 @@ const dom = {
   closeBackendBtn: document.getElementById('btn-close-backend'),
   backendDrawer: document.getElementById('synth-backend-drawer'),
 
-  sessionDirect: document.getElementById('session-direct-spend'),
-  sessionBurden: document.getElementById('session-total-burden'),
-  opportunityReadout: document.getElementById('opportunity-cost-readout'),
+  selectKey: document.getElementById('select-key'),
+  selectMode: document.getElementById('select-mode'),
+  backendSelectKey: document.getElementById('backend-select-key'),
+  backendSelectMode: document.getElementById('backend-select-mode'),
+  paramA4: document.getElementById('param-a4'),
 
-  hudSanctuaryBar: document.getElementById('hud-sanctuary-bar'),
-  hudSanctuaryVal: document.getElementById('hud-sanctuary-val'),
-  hudPressureBar: document.getElementById('hud-pressure-bar'),
-  hudPressureVal: document.getElementById('hud-pressure-val'),
+  sessionDirect: document.getElementById('session-direct-spend'),
   hudMemorialCount: document.getElementById('hud-memorial-count'),
 
-  eventBanner: document.getElementById('event-banner'),
-  eventBadge: document.getElementById('event-badge'),
-  eventHeadline: document.getElementById('event-headline'),
-  eventMeta: document.getElementById('event-meta'),
-  eventPatch: document.getElementById('event-patch'),
+  stagePill: document.getElementById('stage-active-pill'),
+  stagePillBadge: document.getElementById('stage-pill-badge'),
+  stagePillText: document.getElementById('stage-pill-text'),
+
+  inspector: document.getElementById('data-inspector'),
+  inspectorTitle: document.getElementById('inspector-title'),
+  inspectorStatus: document.getElementById('inspector-status'),
+  inspectorSource: document.getElementById('inspector-source'),
+  inspectorMeaning: document.getElementById('inspector-meaning'),
+  inspectorCadence: document.getElementById('inspector-cadence'),
+  inspectorUpdated: document.getElementById('inspector-updated'),
+  inspectorRecords: document.getElementById('inspector-records'),
+  inspectorNextBtn: document.getElementById('btn-inspector-next'),
+  closeInspectorBtn: document.getElementById('btn-close-inspector'),
 
   cxwPrice: document.getElementById('cxw-price'),
   cxwChg: document.getElementById('cxw-chg'),
   geoPrice: document.getElementById('geo-price'),
   geoChg: document.getElementById('geo-chg'),
-  ch1Meta: document.getElementById('ch1-meta'),
-  ch2Contract: document.getElementById('ch2-contract-readout'),
-  ch2Meta: document.getElementById('ch2-meta'),
-  ch3Death: document.getElementById('ch3-death-readout'),
-  ch3Meta: document.getElementById('ch3-meta'),
-  ch4Community: document.getElementById('ch4-community-readout'),
-  ch4Meta: document.getElementById('ch4-meta'),
+  ch2Primary: document.getElementById('ch2-primary'),
+  ch3Primary: document.getElementById('ch3-primary'),
+  ch4Primary: document.getElementById('ch4-primary'),
+
+  ch1Updated: document.getElementById('ch1-updated'),
+  ch2Updated: document.getElementById('ch2-updated'),
+  ch3Updated: document.getElementById('ch3-updated'),
+  ch4Updated: document.getElementById('ch4-updated'),
 
   xyPad: document.getElementById('struggle-xy-pad'),
   xyPuck: document.getElementById('xy-puck'),
@@ -72,6 +87,111 @@ let lastFrameTime = performance.now();
 let sanctuaryLatched = false;
 let xyDragging = false;
 let lastSnapshot = telemetry.getSnapshot();
+let lastUpdatedTextTick = 0;
+
+function formatElapsedAgo(ms) {
+  const sec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  return `${Math.floor(min / 60)}h ago`;
+}
+
+function formatClock(ms) {
+  try {
+    return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch (_) {
+    return 'Just now';
+  }
+}
+
+// ==================== BARE-BONES INTERACTIVE DATA INSPECTOR ====================
+function openInspector(sectionKey, toggleIfSame = false) {
+  if (toggleIfSame && activeInspectorSection === sectionKey) {
+    closeInspector();
+    return;
+  }
+
+  activeInspectorSection = sectionKey;
+  visualizer.setSelectedSection(sectionKey);
+
+  document.querySelectorAll('.lfo-channel').forEach(el => {
+    el.classList.toggle('selected', el.dataset.section === sectionKey);
+  });
+  document.querySelectorAll('.clickable-section').forEach(el => {
+    el.classList.toggle('selected', el.dataset.inspect === sectionKey);
+  });
+
+  renderInspectorContent();
+  dom.inspector.classList.remove('hidden');
+}
+
+function closeInspector() {
+  activeInspectorSection = null;
+  visualizer.setSelectedSection(null);
+  dom.inspector.classList.add('hidden');
+  document.querySelectorAll('.lfo-channel, .clickable-section').forEach(el => {
+    el.classList.remove('selected');
+  });
+}
+
+function renderInspectorContent() {
+  if (!activeInspectorSection) return;
+  const info = telemetry.getSectionDetails(activeInspectorSection);
+
+  dom.inspectorTitle.textContent = info.title;
+  dom.inspectorStatus.textContent = info.statusLabel;
+  dom.inspectorStatus.classList.toggle('archive', info.statusState !== 'live');
+  dom.inspectorSource.textContent = info.source;
+  dom.inspectorMeaning.textContent = info.indicates;
+  dom.inspectorCadence.textContent = info.frequency;
+  dom.inspectorUpdated.textContent = `${formatClock(info.lastUpdatedMs)} (${formatElapsedAgo(info.lastUpdatedMs)})`;
+  dom.inspectorNextBtn.textContent = info.actionLabel;
+
+  dom.inspectorRecords.innerHTML = '';
+  for (const rec of info.records) {
+    const item = document.createElement('div');
+    item.className = 'inspector-record-item';
+    const lbl = document.createElement('div');
+    lbl.className = 'inspector-record-label';
+    lbl.textContent = rec.label;
+    const det = document.createElement('div');
+    det.className = 'inspector-record-detail';
+    det.textContent = rec.detail;
+    item.appendChild(lbl);
+    item.appendChild(det);
+    dom.inspectorRecords.appendChild(item);
+  }
+}
+
+dom.closeInspectorBtn.addEventListener('click', closeInspector);
+
+dom.inspectorNextBtn.addEventListener('click', () => {
+  if (activeInspectorSection === 'equity') telemetry.pulseEquityShock();
+  else if (activeInspectorSection === 'spending') telemetry.pulseContract(true);
+  else if (activeInspectorSection === 'mortality') telemetry.pulseDeathRecord(true);
+  else if (activeInspectorSection === 'community') telemetry.pulseCommunity(true);
+  else telemetry.syncAllApis();
+  renderInspectorContent();
+});
+
+document.querySelectorAll('[data-inspect]').forEach(el => {
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openInspector(el.dataset.inspect, true);
+  });
+});
+
+document.querySelectorAll('.lfo-channel[data-section]').forEach(card => {
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('input, button, select, label')) return;
+    openInspector(card.dataset.section, true);
+  });
+});
+
+dom.stagePill.addEventListener('click', () => {
+  openInspector(lastStageSection, false);
+});
 
 // ==================== TELEMETRY EVENT SUBSCRIPTIONS ====================
 telemetry.onEvent((type, payload) => {
@@ -85,29 +205,33 @@ telemetry.onEvent((type, payload) => {
         textEl.textContent = info.label;
       }
     }
+    if (activeInspectorSection) renderInspectorContent();
   } else if (type === 'stocks') {
     updateStockReadout(payload);
+    if (activeInspectorSection === 'equity') renderInspectorContent();
   } else if (type === 'contract') {
-    dom.ch2Contract.textContent = `${payload.recipient} · ${telemetry.formatCurrency(payload.amount)}`;
-    dom.ch2Meta.textContent = `${payload.agency} · ${payload.location}`;
+    dom.ch2Primary.textContent = `${telemetry.formatCurrency(payload.amount)} · ${payload.recipient}`;
     visualizer.triggerContractPulse();
     synth.triggerContractPulse(telemetry.getModulated('spending'));
+    if (activeInspectorSection === 'spending') renderInspectorContent();
   } else if (type === 'death') {
     const ageStr = payload.age ? `Age ${payload.age}` : 'Age N/A';
-    dom.ch3Death.textContent = `${payload.facility} · ${ageStr} · ${payload.trial_status}`;
-    dom.ch3Meta.textContent = `${payload.days_incarcerated}d held · ${payload.cause_of_death}`;
-    dom.hudMemorialCount.textContent = `${telemetry.loggedDeathsCount} ${telemetry.loggedDeathsCount === 1 ? 'LIFE' : 'LIVES'} LOGGED`;
+    dom.ch3Primary.textContent = `${payload.facility} · ${ageStr}`;
+    dom.hudMemorialCount.textContent = String(telemetry.loggedDeathsCount);
     visualizer.triggerDeathShock(payload);
     synth.triggerDeathRupture(payload, telemetry.channels.mortality.aggression);
+    if (activeInspectorSection === 'mortality') renderInspectorContent();
   } else if (type === 'deathsReady') {
     const ageStr = payload.age ? `Age ${payload.age}` : 'Age N/A';
-    dom.ch3Death.textContent = `${payload.facility} · ${ageStr} (${payload.source})`;
-    dom.ch3Meta.textContent = `${payload.days_incarcerated}d held · Ready to pulse or auto-stream`;
+    dom.ch3Primary.textContent = `${payload.facility} · ${ageStr}`;
   } else if (type === 'community') {
-    dom.ch4Community.textContent = payload.title;
-    dom.ch4Meta.textContent = `${payload.court} · ${payload.impactMetric}`;
+    dom.ch4Primary.textContent = payload.title;
+    if (activeInspectorSection === 'community') renderInspectorContent();
   } else if (type === 'event') {
-    renderEventBanner(payload);
+    lastStageSection = payload.section || 'spending';
+    dom.stagePill.classList.toggle('death-alert', payload.type === 'death');
+    dom.stagePillBadge.textContent = payload.badge;
+    dom.stagePillText.textContent = payload.headline;
   }
 });
 
@@ -121,42 +245,23 @@ function updateStockReadout(stocks) {
   const geoSign = stocks.geo.changePct >= 0 ? '+' : '';
   dom.geoChg.textContent = `${geoSign}${stocks.geo.changePct.toFixed(2)}%`;
   dom.geoChg.className = `t-chg ${stocks.geo.changePct >= 0 ? 'up' : 'down'}`;
-
-  dom.ch1Meta.textContent = stocks.marketOpen
-    ? `NYSE OPEN · Vol ${(stocks.cxw.volume / 1e6).toFixed(2)}M / ${(stocks.geo.volume / 1e6).toFixed(2)}M`
-    : `NYSE AFTER-HOURS · Anchored Tape Vol ${(stocks.cxw.volume / 1e6).toFixed(2)}M`;
-}
-
-function renderEventBanner(ev) {
-  dom.eventBanner.classList.remove('death-alert', 'contract-alert', 'equity-alert', 'community-alert');
-  if (ev.type === 'death') dom.eventBanner.classList.add('death-alert');
-  else if (ev.type === 'contract') dom.eventBanner.classList.add('contract-alert');
-  else if (ev.type === 'equity') dom.eventBanner.classList.add('equity-alert');
-  else if (ev.type === 'community') dom.eventBanner.classList.add('community-alert');
-
-  dom.eventBadge.textContent = ev.badge;
-  dom.eventHeadline.textContent = ev.headline;
-  dom.eventMeta.textContent = ev.meta;
-  dom.eventPatch.textContent = ev.patch;
 }
 
 // ==================== INITIALIZATION & AUDIO UNLOCK ====================
 async function initializeEngine() {
   dom.initBtn.disabled = true;
-  dom.initBtn.textContent = 'INITIALIZING SYNTH & STREAMING APIS…';
+  dom.initBtn.textContent = 'STARTING…';
 
   try {
     await synth.init();
     updateMuteUi();
     dom.workletChip.textContent = `DSP: ${synth.workletStatus}`;
   } catch (err) {
-    console.error('[CELL // SIGNAL] Audio init error:', err);
+    console.error('[JUSTICE SYNTH] Audio init error:', err);
   }
 
   dom.curtain.classList.add('hidden');
   running = true;
-
-  // Start fetching live telemetry APIs without blocking the animation loop
   telemetry.start().catch(err => console.warn('[Telemetry] Initial sync warning:', err));
 }
 
@@ -178,6 +283,22 @@ dom.muteBtn.addEventListener('click', async () => {
   }
   updateMuteUi();
 });
+
+// ==================== LIVE SET KEY, MODE & TUNING SYNC ====================
+function applyKeyAndMode(rootKey, modeKey, a4Freq = synth.params.a4Freq) {
+  synth.setMusicalKeyAndMode(rootKey, modeKey, a4Freq);
+  dom.selectKey.value = synth.params.rootKey;
+  dom.backendSelectKey.value = synth.params.rootKey;
+  dom.selectMode.value = synth.params.modeKey;
+  dom.backendSelectMode.value = synth.params.modeKey;
+  dom.paramA4.value = String(synth.params.a4Freq);
+}
+
+dom.selectKey.addEventListener('change', () => applyKeyAndMode(dom.selectKey.value, synth.params.modeKey));
+dom.selectMode.addEventListener('change', () => applyKeyAndMode(synth.params.rootKey, dom.selectMode.value));
+dom.backendSelectKey.addEventListener('change', () => applyKeyAndMode(dom.backendSelectKey.value, synth.params.modeKey));
+dom.backendSelectMode.addEventListener('change', () => applyKeyAndMode(synth.params.rootKey, dom.backendSelectMode.value));
+dom.paramA4.addEventListener('change', () => applyKeyAndMode(synth.params.rootKey, synth.params.modeKey, Number(dom.paramA4.value)));
 
 // ==================== MIXER & CADENCE CONTROLS ====================
 document.querySelectorAll('.cadence-btn').forEach(btn => {
@@ -203,9 +324,11 @@ dom.apiSyncBtn.addEventListener('click', () => {
     telemetry.setChannelAggression(chName, val);
   });
 
-  modeSelect.addEventListener('change', () => {
-    telemetry.setChannelMode(chName, modeSelect.value);
-  });
+  if (modeSelect) {
+    modeSelect.addEventListener('change', () => {
+      telemetry.setChannelMode(chName, modeSelect.value);
+    });
+  }
 });
 
 document.getElementById('btn-pulse-equity').addEventListener('click', () => telemetry.pulseEquityShock());
@@ -213,7 +336,7 @@ document.getElementById('btn-pulse-contract').addEventListener('click', () => te
 document.getElementById('btn-pulse-death').addEventListener('click', () => telemetry.pulseDeathRecord(true));
 document.getElementById('btn-pulse-community').addEventListener('click', () => telemetry.pulseCommunity(true));
 
-// ==================== HUMAN SANCTUARY XY PAD & STRUGGLE FORCE ====================
+// ==================== HUMAN vs SYSTEM XY PAD ====================
 function setSanctuaryXY(nx, ny, syncSlider = true) {
   const x = Math.max(0, Math.min(1, nx));
   const y = Math.max(0, Math.min(1, ny));
@@ -267,7 +390,7 @@ function toggleSanctuaryLatch(forceState) {
 
 dom.latchBtn.addEventListener('click', () => toggleSanctuaryLatch());
 
-// ==================== COLLAPSIBLE BACKEND SYNTH DRAWER ====================
+// ==================== SYNTH BACKEND DRAWER ====================
 function toggleBackendDrawer(forceOpen) {
   const isCollapsed = dom.backendDrawer.classList.contains('collapsed');
   const open = typeof forceOpen === 'boolean' ? forceOpen : isCollapsed;
@@ -301,11 +424,6 @@ const PARAM_BINDINGS = [
   { id: 'param-masterVol', valId: 'val-masterVol', key: 'masterVol', fmt: v => `${v}%` }
 ];
 
-const scaleSelect = document.getElementById('param-scale');
-scaleSelect.addEventListener('change', () => {
-  synth.setParamValue('scale', scaleSelect.value);
-});
-
 PARAM_BINDINGS.forEach(({ id, valId, key, fmt }) => {
   const input = document.getElementById(id);
   const label = document.getElementById(valId);
@@ -318,7 +436,7 @@ PARAM_BINDINGS.forEach(({ id, valId, key, fmt }) => {
 });
 
 function syncBackendUiFromParams() {
-  scaleSelect.value = synth.params.scale;
+  applyKeyAndMode(synth.params.rootKey, synth.params.modeKey, synth.params.a4Freq);
   PARAM_BINDINGS.forEach(({ id, valId, key, fmt }) => {
     const input = document.getElementById(id);
     const label = document.getElementById(valId);
@@ -337,14 +455,12 @@ dom.presetSelect.addEventListener('change', () => {
   }
 });
 
-// Finnhub Optional API Key
 dom.finnhubInput.value = telemetry.finnhubKey || '';
 dom.saveFinnhubBtn.addEventListener('click', () => {
   telemetry.saveFinnhubKey(dom.finnhubInput.value);
   telemetry.fetchStocks();
 });
 
-// Fullscreen Stage Mode
 dom.fullscreenBtn.addEventListener('click', () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen?.().catch(() => {});
@@ -353,7 +469,6 @@ dom.fullscreenBtn.addEventListener('click', () => {
   }
 });
 
-// ==================== KEYBOARD SHORTCUTS ====================
 window.addEventListener('keydown', (e) => {
   if (e.target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
 
@@ -371,36 +486,25 @@ window.addEventListener('keydown', (e) => {
     toggleSanctuaryLatch();
   } else if (k === 'f') {
     dom.fullscreenBtn.click();
+  } else if (k === 'escape' && activeInspectorSection) {
+    closeInspector();
   }
 });
 
-// ==================== RESPONSIVE CANVAS & 60FPS MAIN LOOP ====================
+// ==================== CANVAS RESIZE & 60FPS LOOP ====================
 const resizeObserver = new ResizeObserver(() => visualizer.resize());
 resizeObserver.observe(canvas);
 window.addEventListener('resize', () => visualizer.resize());
 
-function updateDomTelemetry(snapshot) {
-  // Macro counters
+function updateDomTelemetry(snapshot, nowMs) {
   dom.sessionDirect.textContent = `$${snapshot.macro.directSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  dom.sessionBurden.textContent = `$${snapshot.macro.totalBurden.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  dom.opportunityReadout.textContent = `${snapshot.macro.teacherYears.toFixed(2)} TEACHER YRS · ${snapshot.macro.housingUnits.toFixed(2)} HOUSING UNITS`;
 
-  // Struggle HUD
-  const sancPct = Math.round(synth.state.sanctuaryStrength * 100);
-  const presPct = Math.round(Math.min(100, (synth.state.systemicPressure / 1.2) * 100));
-  dom.hudSanctuaryBar.style.width = `${sancPct}%`;
-  dom.hudSanctuaryVal.textContent = `${sancPct}%`;
-  dom.hudPressureBar.style.width = `${presPct}%`;
-  dom.hudPressureVal.textContent = `${presPct}%`;
-
-  // Resistance halo around XY puck visualizes pressure pushing against user
   const haloSize = 26 + synth.state.systemicPressure * 54;
   dom.xyHalo.style.left = dom.xyPuck.style.left;
   dom.xyHalo.style.top = dom.xyPuck.style.top;
   dom.xyHalo.style.width = `${haloSize.toFixed(0)}px`;
   dom.xyHalo.style.height = `${haloSize.toFixed(0)}px`;
 
-  // LFO Mixer Bars + Live Explicit Patch Callouts
   for (const chName of ['equity', 'spending', 'mortality', 'community']) {
     const mod = snapshot.channels[chName].modulated;
     const pct = Math.min(100, Math.round((mod / 1.5) * 100));
@@ -408,14 +512,19 @@ function updateDomTelemetry(snapshot) {
     document.getElementById(`lfo-pct-${chName}`).textContent = `${Math.round(mod * 100)}%`;
   }
 
-  document.getElementById('route-equity').textContent =
-    `──► FM ${(synth.state.effectiveFmIndex * 100).toFixed(0)}% · CELL COMB ${(synth.state.effectiveComb * 100).toFixed(0)}%`;
-  document.getElementById('route-spending').textContent =
-    `──► WAVEFOLD ${(synth.state.effectiveFold * 100).toFixed(0)}% · SUB PRESSURE`;
-  document.getElementById('route-mortality').textContent =
-    `──► BITCRUSH ${(synth.state.effectiveCrush * 100).toFixed(0)}% · MEMORIAL BELL`;
-  document.getElementById('route-community').textContent =
-    `──► CHOIR FILTER ${Math.round(synth.state.effectiveCutoff)}Hz · BLOOM`;
+  // Update "Last updated: Xs ago" readouts cleanly once per second
+  if (nowMs - lastUpdatedTextTick >= 900) {
+    lastUpdatedTextTick = nowMs;
+    dom.ch1Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.equity)} · ${telemetry.stocks.marketOpen ? '25s poll' : 'Tape replay'}`;
+    dom.ch2Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.spending)} · USAspending API`;
+    dom.ch3Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.mortality)} · UCLA / IT DB`;
+    dom.ch4Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.community)} · Daily filings`;
+
+    if (activeInspectorSection) {
+      const info = telemetry.getSectionDetails(activeInspectorSection);
+      dom.inspectorUpdated.textContent = `${formatClock(info.lastUpdatedMs)} (${formatElapsedAgo(info.lastUpdatedMs)})`;
+    }
+  }
 }
 
 function frame(now) {
@@ -425,7 +534,6 @@ function frame(now) {
   if (running) {
     lastSnapshot = telemetry.update(dt);
 
-    // Subtle systemic gravity pulls sanctuary down gently if not dragged or latched
     if (!xyDragging && !sanctuaryLatched) {
       const pullForce = lastSnapshot.systemicPressure * 0.032 * dt;
       if (synth.params.xyY > 0.16) {
@@ -434,7 +542,7 @@ function frame(now) {
     }
 
     synth.update(lastSnapshot, dt);
-    updateDomTelemetry(lastSnapshot);
+    updateDomTelemetry(lastSnapshot, now);
   }
 
   visualizer.render(dt, lastSnapshot, synth);
