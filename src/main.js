@@ -16,11 +16,15 @@ const tooltipEl = document.getElementById('memorial-tooltip');
 let activeInspectorSection = null;
 let lastStageSection = 'spending';
 
-const visualizer = new TelemetryVisualizer(canvas, tooltipEl, (nodeKey) => {
-  openInspector(nodeKey);
-});
+const visualizer = new TelemetryVisualizer(
+  canvas,
+  tooltipEl,
+  (nodeKey) => openInspector(nodeKey),
+  (nx, ny) => setSanctuaryXY(nx, ny, true)
+);
 
 const dom = {
+  app: document.getElementById('app'),
   curtain: document.getElementById('entry-curtain'),
   initBtn: document.getElementById('btn-initialize-engine'),
   audioDot: document.getElementById('audio-status-dot'),
@@ -41,6 +45,18 @@ const dom = {
   sessionDirect: document.getElementById('session-direct-spend'),
   hudMemorialCount: document.getElementById('hud-memorial-count'),
 
+  clockSpendVal: document.getElementById('clock-spend-val'),
+  clockSpendSub: document.getElementById('clock-spend-sub'),
+  clockEquityVal: document.getElementById('clock-equity-val'),
+  clockEquitySub: document.getElementById('clock-equity-sub'),
+  clockCustodyVal: document.getElementById('clock-custody-val'),
+  clockCustodySub: document.getElementById('clock-custody-sub'),
+  clockDeathsVal: document.getElementById('clock-deaths-val'),
+  clockDeathsSub: document.getElementById('clock-deaths-sub'),
+  clockCommunityVal: document.getElementById('clock-community-val'),
+  clockCommunitySub: document.getElementById('clock-community-sub'),
+  btnStageShock: document.getElementById('btn-stage-shock'),
+
   stagePill: document.getElementById('stage-active-pill'),
   stagePillBadge: document.getElementById('stage-pill-badge'),
   stagePillText: document.getElementById('stage-pill-text'),
@@ -52,6 +68,9 @@ const dom = {
   inspectorMeaning: document.getElementById('inspector-meaning'),
   inspectorCadence: document.getElementById('inspector-cadence'),
   inspectorUpdated: document.getElementById('inspector-updated'),
+  inspectorWeightBox: document.getElementById('inspector-weight-box'),
+  inspectorAggSlider: document.getElementById('inspector-agg-slider'),
+  inspectorAggVal: document.getElementById('inspector-agg-val'),
   inspectorRecords: document.getElementById('inspector-records'),
   inspectorNextBtn: document.getElementById('btn-inspector-next'),
   closeInspectorBtn: document.getElementById('btn-close-inspector'),
@@ -150,6 +169,16 @@ function renderInspectorContent() {
   dom.inspectorUpdated.textContent = `${formatClock(info.lastUpdatedMs)} (${formatElapsedAgo(info.lastUpdatedMs)})`;
   dom.inspectorNextBtn.textContent = info.actionLabel;
 
+  const chState = telemetry.channels[activeInspectorSection];
+  if (chState && dom.inspectorWeightBox) {
+    const pct = Math.round(chState.aggression * 100);
+    dom.inspectorWeightBox.classList.remove('hidden');
+    dom.inspectorAggSlider.value = pct;
+    dom.inspectorAggVal.textContent = `${pct}%`;
+  } else if (dom.inspectorWeightBox) {
+    dom.inspectorWeightBox.classList.add('hidden');
+  }
+
   dom.inspectorRecords.innerHTML = '';
   for (const rec of info.records) {
     const item = document.createElement('div');
@@ -167,6 +196,45 @@ function renderInspectorContent() {
 }
 
 dom.closeInspectorBtn.addEventListener('click', closeInspector);
+
+if (dom.inspectorAggSlider) {
+  dom.inspectorAggSlider.addEventListener('input', () => {
+    if (!activeInspectorSection || !telemetry.channels[activeInspectorSection]) return;
+    const val = Number(dom.inspectorAggSlider.value);
+    dom.inspectorAggVal.textContent = `${val}%`;
+    telemetry.setChannelAggression(activeInspectorSection, val);
+
+    const cardSlider = document.getElementById(`agg-${activeInspectorSection}`);
+    const cardVal = document.getElementById(`agg-val-${activeInspectorSection}`);
+    if (cardSlider) cardSlider.value = val;
+    if (cardVal) cardVal.textContent = `${val}%`;
+  });
+}
+
+const VALID_VIEWS = ['clock', 'console', 'pure'];
+let currentViewMode = 'clock';
+
+function setViewMode(mode) {
+  if (!VALID_VIEWS.includes(mode)) return;
+  currentViewMode = mode;
+  dom.app.dataset.view = mode;
+  document.querySelectorAll('[data-view-mode]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.viewMode === mode);
+  });
+  visualizer.setViewMode(mode);
+  if (mode === 'pure' && activeInspectorSection) {
+    closeInspector();
+  }
+  requestAnimationFrame(() => visualizer.resize());
+}
+
+document.querySelectorAll('[data-view-mode]').forEach(btn => {
+  btn.addEventListener('click', () => setViewMode(btn.dataset.viewMode));
+});
+
+if (dom.btnStageShock) {
+  dom.btnStageShock.addEventListener('click', () => telemetry.pulseDeathRecord(true));
+}
 
 dom.inspectorNextBtn.addEventListener('click', () => {
   if (activeInspectorSection === 'equity') telemetry.pulseEquityShock();
@@ -221,20 +289,35 @@ telemetry.onEvent((type, payload) => {
     const ageStr = payload.age ? `Age ${payload.age}` : 'Age N/A';
     dom.ch3Primary.textContent = `${payload.facility} · ${ageStr}`;
     dom.hudMemorialCount.textContent = String(telemetry.loggedDeathsCount);
+    if (dom.clockDeathsVal) dom.clockDeathsVal.textContent = String(telemetry.loggedDeathsCount);
+    if (dom.clockDeathsSub) dom.clockDeathsSub.textContent = `${payload.facility} · ${ageStr}`;
+    const mortClock = document.querySelector('.ch-mortality-glow');
+    if (mortClock) {
+      mortClock.classList.add('shock-pulse');
+      clearTimeout(mortClock._shockTimer);
+      mortClock._shockTimer = setTimeout(() => mortClock.classList.remove('shock-pulse'), 750);
+    }
     visualizer.triggerDeathShock(payload);
     synth.triggerDeathRupture(payload, telemetry.channels.mortality.aggression);
     if (activeInspectorSection === 'mortality') renderInspectorContent();
   } else if (type === 'deathsReady') {
     const ageStr = payload.age ? `Age ${payload.age}` : 'Age N/A';
     dom.ch3Primary.textContent = `${payload.facility} · ${ageStr}`;
+    if (dom.clockDeathsSub) dom.clockDeathsSub.textContent = `${payload.facility} · ${ageStr}`;
   } else if (type === 'community') {
     dom.ch4Primary.textContent = payload.title;
+    if (dom.clockCommunitySub) dom.clockCommunitySub.textContent = payload.title;
     if (activeInspectorSection === 'community') renderInspectorContent();
   } else if (type === 'nycdoc') {
     const stats = payload.stats || telemetry.nycStats;
     const pct = stats.total > 0 ? Math.round((stats.pretrial / stats.total) * 100) : 86;
     dom.ch5Primary.textContent = `${stats.total.toLocaleString('en-US')} held · ${pct}% pre-trial`;
+    if (dom.clockCustodyVal) dom.clockCustodyVal.textContent = `${stats.total.toLocaleString('en-US')} · 1,918,500`;
+    if (dom.clockCustodySub) dom.clockCustodySub.textContent = `${pct}% pre-trial in NYC · ${stats.bradh.toLocaleString('en-US')} Brad H.`;
+    const nycFlow = document.querySelector('.ch-nycdoc-glow .clock-flow');
+    if (nycFlow) nycFlow.textContent = `↓ ${pct}% UNCONVICTED PRE-TRIAL (NYC DOC)`;
     if (payload.emitAudio && payload.record) {
+      visualizer.triggerNycPulse();
       synth.triggerNycInmatePulse(payload.record, telemetry.channels.nycdoc.aggression);
     }
     if (activeInspectorSection === 'nycdoc') renderInspectorContent();
@@ -256,6 +339,13 @@ function updateStockReadout(stocks) {
   const geoSign = stocks.geo.changePct >= 0 ? '+' : '';
   dom.geoChg.textContent = `${geoSign}${stocks.geo.changePct.toFixed(2)}%`;
   dom.geoChg.className = `t-chg ${stocks.geo.changePct >= 0 ? 'up' : 'down'}`;
+
+  if (dom.clockEquityVal) {
+    dom.clockEquityVal.textContent = `$${stocks.cxw.price.toFixed(2)} / $${stocks.geo.price.toFixed(2)}`;
+  }
+  if (dom.clockEquitySub) {
+    dom.clockEquitySub.textContent = `CXW ${cxwSign}${stocks.cxw.changePct.toFixed(2)}% · GEO ${geoSign}${stocks.geo.changePct.toFixed(2)}%`;
+  }
 }
 
 // ==================== INITIALIZATION & AUDIO UNLOCK ====================
@@ -488,6 +578,14 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || k === 'm') {
     e.preventDefault();
     dom.muteBtn.click();
+  } else if (k === '1') {
+    setViewMode('clock');
+  } else if (k === '2') {
+    setViewMode('console');
+  } else if (k === '3') {
+    setViewMode('pure');
+  } else if (k === 'v') {
+    setViewMode(VALID_VIEWS[(VALID_VIEWS.indexOf(currentViewMode) + 1) % VALID_VIEWS.length]);
   } else if (k === 'd') {
     telemetry.pulseDeathRecord(true);
   } else if (k === 'c') {
@@ -509,7 +607,13 @@ resizeObserver.observe(canvas);
 window.addEventListener('resize', () => visualizer.resize());
 
 function updateDomTelemetry(snapshot, nowMs) {
-  dom.sessionDirect.textContent = `$${snapshot.macro.directSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const spendFormatted = `$${snapshot.macro.directSpend.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  dom.sessionDirect.textContent = spendFormatted;
+  if (dom.clockSpendVal) dom.clockSpendVal.textContent = spendFormatted;
+  if (dom.clockSpendSub) {
+    const burdenFormatted = snapshot.macro.totalBurden.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    dom.clockSpendSub.textContent = `Total burden: $${burdenFormatted} ($5,771/sec)`;
+  }
 
   const haloSize = 26 + synth.state.systemicPressure * 54;
   dom.xyHalo.style.left = dom.xyPuck.style.left;

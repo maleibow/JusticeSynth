@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app" class="app-shell">
+  <div id="app" class="app-shell" data-view="clock">
     <!-- Top Bar: Brand, 3 Clean Data Cells, Live-Set Key/Mode, Backend/Mute -->
     <header id="telemetry-header" class="top-banner">
       <div class="brand-block">
@@ -41,6 +41,12 @@
       </div>
 
       <div class="header-actions">
+        <div class="view-mode-group" role="group" aria-label="Visual Stage View Mode">
+          <button class="view-mode-btn active" data-view-mode="clock" type="button" title="Big Clock + Fluid Visualization [1]">CLOCK + FLUID</button>
+          <button class="view-mode-btn" data-view-mode="console" type="button" title="Full Mixer Console View [2]">CONSOLE</button>
+          <button class="view-mode-btn" data-view-mode="pure" type="button" title="Pure Fluid — Remove All Text [3 / V]">NO TEXT</button>
+        </div>
+
         <div class="tuning-bar" aria-label="Live Set Key and Mode">
           <label class="tuning-pill">
             <span>KEY</span>
@@ -97,7 +103,45 @@
       <section class="visual-stage" aria-label="Live Data Visualization">
         <canvas id="telemetry-canvas"></canvas>
 
-        <!-- Minimal Source Status Strip (Click any pill to inspect) -->
+        <!-- Monumental Live Telemetry Clock HUD (Interacts directly with the fluid field below) -->
+        <div id="clock-stage-hud" class="clock-stage-hud" aria-label="Live Carceral Telemetry Clock">
+          <button class="clock-hud-cell clickable-section ch-equity-glow" data-inspect="equity" data-clock-node="equity" type="button" title="Click to inspect Private Prison Stock &amp; adjust force">
+            <span class="clock-k">PRISON STOCK (CXW · GEO)</span>
+            <span class="clock-v clock-amber" id="clock-equity-val">$18.42 / $24.85</span>
+            <span class="clock-flow amber">↑ MONEY FLOWING INTO STOCK</span>
+            <span class="clock-sub" id="clock-equity-sub">CXW +1.88% · GEO +2.26%</span>
+          </button>
+
+          <button class="clock-hud-cell primary-clock clickable-section ch-spending-glow" data-inspect="spending" data-clock-node="spending" type="button" title="Click to inspect Federal Carceral Spending &amp; adjust force">
+            <span class="clock-k">US CARCERAL SPEND (SESSION CLOCK)</span>
+            <span class="clock-v clock-mono-giant" id="clock-spend-val">$0.00</span>
+            <span class="clock-flow coral">↓ PULLING FROM INDIVIDUALS ($2,560.55/SEC)</span>
+            <span class="clock-sub" id="clock-spend-sub">Total burden: $0 ($5,771/sec)</span>
+          </button>
+
+          <button class="clock-hud-cell clickable-section ch-nycdoc-glow" data-inspect="nycdoc" data-clock-node="nycdoc" type="button" title="Click to inspect NYC DOC Custody &amp; US Total Incarcerated">
+            <span class="clock-k">PEOPLE IN CUSTODY (NYC · US)</span>
+            <span class="clock-v clock-violet" id="clock-custody-val">6,628 · 1,918,500</span>
+            <span class="clock-flow violet">↓ 86% UNCONVICTED PRE-TRIAL (NYC DOC)</span>
+            <span class="clock-sub" id="clock-custody-sub">Daily live roster · Click to inspect</span>
+          </button>
+
+          <button class="clock-hud-cell clickable-section ch-mortality-glow" data-inspect="mortality" data-clock-node="mortality" type="button" title="Click to inspect Custody Mortality &amp; trigger shockwave">
+            <span class="clock-k">CUSTODY DEATHS LOGGED</span>
+            <span class="clock-v clock-crimson" id="clock-deaths-val">0</span>
+            <span class="clock-flow crimson">⚡ SENDS SHOCKWAVE TO SYSTEM</span>
+            <span class="clock-sub" id="clock-deaths-sub">Stars remain in memorial sky</span>
+          </button>
+
+          <button class="clock-hud-cell clickable-section ch-community-glow" data-inspect="community" data-clock-node="community" type="button" title="Click to inspect Courts, Families &amp; Pushback">
+            <span class="clock-k">FAMILIES &amp; COURTS PUSHBACK</span>
+            <span class="clock-v clock-teal" id="clock-community-val">2,700,000</span>
+            <span class="clock-flow teal">↑ RESTORATIVE FORCE INTO CENTER</span>
+            <span class="clock-sub" id="clock-community-sub">Children w/ incarcerated parent</span>
+          </button>
+        </div>
+
+        <!-- Minimal Source Status Strip (Fallback compact pills) -->
         <div class="api-status-strip" id="api-status-strip">
           <button class="api-pill clickable-section" data-api="stocks" data-inspect="equity" type="button">
             <i class="dot"></i> CXW/GEO <em id="status-stocks">INIT</em>
@@ -151,6 +195,14 @@
             </div>
           </div>
 
+          <div id="inspector-weight-box" class="inspector-weight-box">
+            <label for="inspector-agg-slider" class="fader-label">
+              <span>FORCE / DATA WEIGHT IN SYSTEM</span>
+              <span class="fader-val" id="inspector-agg-val">100%</span>
+            </label>
+            <input id="inspector-agg-slider" class="mixer-slider" type="range" min="0" max="200" value="100" step="1" />
+          </div>
+
           <div class="inspector-records-wrap">
             <div class="field-k">CURRENT RECORDS</div>
             <div id="inspector-records" class="inspector-records"></div>
@@ -163,6 +215,15 @@
 
         <!-- Inspectable Memorial Star Tooltip -->
         <div id="memorial-tooltip" class="memorial-tooltip hidden" role="dialog" aria-hidden="true"></div>
+
+        <!-- Quick View Mode & Shockwave Controls (Remains accessible even in NO TEXT mode) -->
+        <div id="floating-stage-controls" class="floating-stage-controls" aria-label="Quick Stage Controls">
+          <button class="float-view-btn active" data-view-mode="clock" type="button">CLOCK</button>
+          <button class="float-view-btn" data-view-mode="console" type="button">CONSOLE</button>
+          <button class="float-view-btn" data-view-mode="pure" type="button">NO TEXT</button>
+          <span class="float-sep" aria-hidden="true"></span>
+          <button id="btn-stage-shock" class="float-action-btn danger" type="button" title="Trigger Custody Death Shockwave [D]">⚡ DEATH SHOCK</button>
+        </div>
       </section>
 
       <!-- Sparse Frontend Data Mixer (No synth jargon; click any card to highlight & inspect) -->
