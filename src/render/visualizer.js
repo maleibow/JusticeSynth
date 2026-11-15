@@ -396,7 +396,7 @@ export class TelemetryVisualizer {
   }
 
   /**
-   * Draws 4 concise, clickable visual Data Nodes feeding the central visualization.
+   * Draws 5 concise, clickable visual Data Nodes feeding the central visualization.
    */
   drawDataNodes(ctx, w, h, cx, cy, snapshot) {
     const ch = snapshot.channels;
@@ -406,12 +406,19 @@ export class TelemetryVisualizer {
         ? `$${(snapshot.currentContract.amount / 1e6).toFixed(1)}M`
         : `$${Math.round(snapshot.currentContract.amount / 1e3)}K`)
       : '$2,561/s';
+    const nycTotal = snapshot.nycStats?.total || 6628;
+    const nycPretrial = snapshot.nycStats?.pretrial || 5696;
+    const nycPretrialPct = Math.round((nycPretrial / Math.max(1, nycTotal)) * 100);
+    const nycdocChannel = ch.nycdoc || { modulated: 0.4, pulse: 0 };
+
+    const leftX = isNarrow ? 10 : w * 0.12;
+    const rightX = isNarrow ? w - 10 : w * 0.88;
 
     const nodes = [
       {
         key: 'equity',
-        sx: isNarrow ? w * 0.16 : w * 0.14,
-        sy: h * 0.28,
+        sx: leftX,
+        sy: h * 0.25,
         color: '#f59e0b',
         level: ch.equity.modulated,
         pulse: ch.equity.pulse,
@@ -420,8 +427,8 @@ export class TelemetryVisualizer {
       },
       {
         key: 'spending',
-        sx: isNarrow ? w * 0.16 : w * 0.14,
-        sy: h * 0.62,
+        sx: leftX,
+        sy: h * 0.45,
         color: '#fb7185',
         level: ch.spending.modulated,
         pulse: ch.spending.pulse,
@@ -429,9 +436,19 @@ export class TelemetryVisualizer {
         metric: `${contractAmt} · $2,561/sec`
       },
       {
+        key: 'nycdoc',
+        sx: leftX,
+        sy: h * 0.65,
+        color: '#a78bfa',
+        level: nycdocChannel.modulated,
+        pulse: nycdocChannel.pulse,
+        title: 'NYC CUSTODY',
+        metric: `${nycTotal.toLocaleString('en-US')} HELD · ${nycPretrialPct}% PRE-TRIAL`
+      },
+      {
         key: 'mortality',
-        sx: isNarrow ? w * 0.84 : w * 0.86,
-        sy: h * 0.28,
+        sx: rightX,
+        sy: h * 0.30,
         color: '#ff334b',
         level: ch.mortality.modulated,
         pulse: ch.mortality.pulse,
@@ -440,8 +457,8 @@ export class TelemetryVisualizer {
       },
       {
         key: 'community',
-        sx: isNarrow ? w * 0.84 : w * 0.86,
-        sy: h * 0.62,
+        sx: rightX,
+        sy: h * 0.58,
         color: '#34d399',
         level: ch.community.modulated,
         pulse: ch.community.pulse,
@@ -489,7 +506,7 @@ export class TelemetryVisualizer {
       const boxH = 34;
       const alignRight = n.sx > cx;
       const bx = alignRight ? clamp(n.sx - boxW, 8, w - boxW - 8) : clamp(n.sx, 8, w - boxW - 8);
-      const by = clamp(n.sy - boxH * 0.5, 52, h - 98);
+      const by = clamp(n.sy - boxH * 0.5, isNarrow ? 76 : 52, h - 98);
 
       this.nodeHitboxes.push({ key: n.key, x: bx, y: by, w: boxW, h: boxH });
 

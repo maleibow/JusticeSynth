@@ -63,11 +63,13 @@ const dom = {
   ch2Primary: document.getElementById('ch2-primary'),
   ch3Primary: document.getElementById('ch3-primary'),
   ch4Primary: document.getElementById('ch4-primary'),
+  ch5Primary: document.getElementById('ch5-primary'),
 
   ch1Updated: document.getElementById('ch1-updated'),
   ch2Updated: document.getElementById('ch2-updated'),
   ch3Updated: document.getElementById('ch3-updated'),
   ch4Updated: document.getElementById('ch4-updated'),
+  ch5Updated: document.getElementById('ch5-updated'),
 
   xyPad: document.getElementById('struggle-xy-pad'),
   xyPuck: document.getElementById('xy-puck'),
@@ -171,6 +173,7 @@ dom.inspectorNextBtn.addEventListener('click', () => {
   else if (activeInspectorSection === 'spending') telemetry.pulseContract(true);
   else if (activeInspectorSection === 'mortality') telemetry.pulseDeathRecord(true);
   else if (activeInspectorSection === 'community') telemetry.pulseCommunity(true);
+  else if (activeInspectorSection === 'nycdoc') telemetry.pulseNycInmate(true);
   else telemetry.syncAllApis();
   renderInspectorContent();
 });
@@ -227,6 +230,14 @@ telemetry.onEvent((type, payload) => {
   } else if (type === 'community') {
     dom.ch4Primary.textContent = payload.title;
     if (activeInspectorSection === 'community') renderInspectorContent();
+  } else if (type === 'nycdoc') {
+    const stats = payload.stats || telemetry.nycStats;
+    const pct = stats.total > 0 ? Math.round((stats.pretrial / stats.total) * 100) : 86;
+    dom.ch5Primary.textContent = `${stats.total.toLocaleString('en-US')} held · ${pct}% pre-trial`;
+    if (payload.emitAudio && payload.record) {
+      synth.triggerNycInmatePulse(payload.record, telemetry.channels.nycdoc.aggression);
+    }
+    if (activeInspectorSection === 'nycdoc') renderInspectorContent();
   } else if (type === 'event') {
     lastStageSection = payload.section || 'spending';
     dom.stagePill.classList.toggle('death-alert', payload.type === 'death');
@@ -313,7 +324,7 @@ dom.apiSyncBtn.addEventListener('click', () => {
   telemetry.syncAllApis();
 });
 
-['equity', 'spending', 'mortality', 'community'].forEach(chName => {
+['equity', 'spending', 'mortality', 'community', 'nycdoc'].forEach(chName => {
   const slider = document.getElementById(`agg-${chName}`);
   const valLabel = document.getElementById(`agg-val-${chName}`);
   const modeSelect = document.getElementById(`mode-${chName}`);
@@ -335,6 +346,7 @@ document.getElementById('btn-pulse-equity').addEventListener('click', () => tele
 document.getElementById('btn-pulse-contract').addEventListener('click', () => telemetry.pulseContract(true));
 document.getElementById('btn-pulse-death').addEventListener('click', () => telemetry.pulseDeathRecord(true));
 document.getElementById('btn-pulse-community').addEventListener('click', () => telemetry.pulseCommunity(true));
+document.getElementById('btn-pulse-nycdoc').addEventListener('click', () => telemetry.pulseNycInmate(true));
 
 // ==================== HUMAN vs SYSTEM XY PAD ====================
 function setSanctuaryXY(nx, ny, syncSlider = true) {
@@ -505,7 +517,7 @@ function updateDomTelemetry(snapshot, nowMs) {
   dom.xyHalo.style.width = `${haloSize.toFixed(0)}px`;
   dom.xyHalo.style.height = `${haloSize.toFixed(0)}px`;
 
-  for (const chName of ['equity', 'spending', 'mortality', 'community']) {
+  for (const chName of ['equity', 'spending', 'mortality', 'community', 'nycdoc']) {
     const mod = snapshot.channels[chName].modulated;
     const pct = Math.min(100, Math.round((mod / 1.5) * 100));
     document.getElementById(`lfo-bar-${chName}`).style.width = `${pct}%`;
@@ -519,6 +531,7 @@ function updateDomTelemetry(snapshot, nowMs) {
     dom.ch2Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.spending)} · USAspending API`;
     dom.ch3Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.mortality)} · UCLA / IT DB`;
     dom.ch4Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.community)} · Daily filings`;
+    dom.ch5Updated.textContent = `Updated ${formatElapsedAgo(telemetry.lastUpdated.nycdoc)} · NYC OpenData`;
 
     if (activeInspectorSection) {
       const info = telemetry.getSectionDetails(activeInspectorSection);

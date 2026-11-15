@@ -747,6 +747,7 @@ export class CarceralSynthEngine {
     const spendingMod = ch.spending.modulated;
     const mortalityMod = ch.mortality.modulated;
     const communityMod = ch.community.modulated;
+    const nycdocMod = ch.nycdoc ? ch.nycdoc.modulated : 0;
 
     const performerPush = clamp(this.params.xyY, 0, 1);
     const performerMorph = clamp(this.params.xyX, 0, 1);
@@ -845,10 +846,17 @@ export class CarceralSynthEngine {
       this.setParam(p.get('wetMix'), clamp(0.28 + systemicPressure * 0.45, 0.15, 0.92), 0, 1, 0.04);
     }
 
-    const effComb = clamp((this.params.comb / 100) * (0.55 + equityMod * 0.45), 0.05, 0.78);
+    const combMod = clamp(equityMod * 0.55 + nycdocMod * 0.55, 0, 1.35);
+    const effComb = clamp((this.params.comb / 100) * (0.48 + combMod * 0.42), 0.05, 0.78);
     this.state.effectiveComb = effComb;
     this.setParam(this.nodes.combFeedback.gain, effComb, 0, 0.78, 0.05);
-    this.setParam(this.nodes.combDelay.delayTime, clamp(0.0085 + (1 - equityMod) * 0.0065, 0.005, 0.025), 0.004, 0.03, 0.06);
+    this.setParam(
+      this.nodes.combDelay.delayTime,
+      clamp(0.008 + (1 - clamp(nycdocMod * 0.6 + equityMod * 0.4, 0, 1)) * 0.007, 0.005, 0.025),
+      0.004,
+      0.03,
+      0.06
+    );
 
     // 4. Space & Master Gain
     this.setParam(this.nodes.reverbSend.gain, clamp((this.params.reverb / 100) * (0.65 + sanctuaryStrength * 0.5), 0.1, 1.1), 0, 1.2, 0.08);
@@ -985,6 +993,64 @@ export class CarceralSynthEngine {
     env.connect(this.nodes.dcBlocker);
     osc.start(now);
     osc.stop(now + 0.85);
+  }
+
+  /**
+   * Modal cell chime quantized to the active musical Key/Mode for NYC DOC custody records.
+   * Detention duration stretches decay; Brad H. mental health observation or pre-trial DE status adds an upper partial.
+   */
+  triggerNycInmatePulse(record, nycAggression = 1.0) {
+    if (!this.initialized || !this.ctx || this.muted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const agg = clamp(Number.isFinite(Number(nycAggression)) ? Number(nycAggression) : 1.0, 0.1, 2.0);
+    const daysHeld = clamp(Number.isFinite(Number(record?.daysHeld)) ? Number(record.daysHeld) : 45, 1, 1800);
+    const decay = clamp(0.45 + Math.log10(daysHeld + 1) * 0.42, 0.45, 1.9);
+
+    const notes = this.activeNotes && this.activeNotes.length ? this.activeNotes : [73.42, 87.31, 98.0, 110.0, 130.81];
+    const idSeed = Number.parseInt(record?.inmateid, 10);
+    const seedIdx = Number.isFinite(idSeed) ? Math.abs(idSeed) : Math.round(daysHeld);
+    const baseNote = notes[seedIdx % notes.length];
+    const baseFreq = clamp(baseNote * 2, 110, 880);
+
+    const primaryOsc = ctx.createOscillator();
+    const primaryGain = ctx.createGain();
+    primaryOsc.type = 'triangle';
+    primaryOsc.frequency.setValueAtTime(baseFreq, now);
+
+    const peakGain = clamp(0.06 + agg * 0.085, 0.03, 0.22);
+    primaryGain.gain.setValueAtTime(0.0001, now);
+    primaryGain.gain.linearRampToValueAtTime(peakGain, now + 0.015);
+    primaryGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+    primaryOsc.connect(primaryGain);
+    primaryGain.connect(this.nodes.dcBlocker);
+    if (this.nodes.reverbSend) primaryGain.connect(this.nodes.reverbSend);
+    primaryOsc.start(now);
+    primaryOsc.stop(now + decay + 0.08);
+
+    const hasUpperPartial = record?.bradh === 'Y' || record?.inmate_status_code === 'DE';
+    if (hasUpperPartial) {
+      const partialOsc = ctx.createOscillator();
+      const partialGain = ctx.createGain();
+      const ratio = record?.bradh === 'Y' ? 2.5 : 1.5;
+      const partialFreq = clamp(baseFreq * ratio, 165, 2200);
+      const partialDecay = clamp(decay * 1.15, 0.55, 2.2);
+
+      partialOsc.type = 'sine';
+      partialOsc.frequency.setValueAtTime(partialFreq, now);
+
+      partialGain.gain.setValueAtTime(0.0001, now);
+      partialGain.gain.linearRampToValueAtTime(peakGain * 0.45, now + 0.03);
+      partialGain.gain.exponentialRampToValueAtTime(0.0001, now + partialDecay);
+
+      partialOsc.connect(partialGain);
+      partialGain.connect(this.nodes.dcBlocker);
+      if (this.nodes.reverbSend) partialGain.connect(this.nodes.reverbSend);
+      partialOsc.start(now + 0.02);
+      partialOsc.stop(now + partialDecay + 0.1);
+    }
   }
 
   getWaveformData() {

@@ -111,6 +111,9 @@
           <button class="api-pill clickable-section" data-api="community" data-inspect="community" type="button">
             <i class="dot"></i> DOCKETS/BOP <em id="status-community">INIT</em>
           </button>
+          <button class="api-pill clickable-section" data-api="nycdoc" data-inspect="nycdoc" type="button">
+            <i class="dot"></i> NYC CUSTODY <em id="status-nycdoc">INIT</em>
+          </button>
         </div>
 
         <!-- Minimal 1-Line Active Stream Pill (Bottom-Left) -->
@@ -301,6 +304,40 @@
           <div class="ch-footer-row">
             <span class="ch-src-caption">Fed. Register / Dockets</span>
             <button id="btn-pulse-community" class="pulse-mini-btn sanctuary-btn" type="button">NEXT FILING</button>
+          </div>
+        </article>
+
+        <!-- CH 05: NYC Daily Custody -->
+        <article class="lfo-channel ch-nycdoc" data-section="nycdoc">
+          <div class="ch-header">
+            <div class="ch-title-wrap">
+              <span class="ch-num">05 // NYC DAILY CUSTODY</span>
+              <h2 class="ch-title">RIKERS &amp; DOC</h2>
+            </div>
+            <button class="info-pill-btn" data-inspect="nycdoc" type="button">INFO</button>
+          </div>
+
+          <div class="ch-stat-row">
+            <div class="ch-primary-val" id="ch5-primary">6,628 held · 86% pre-trial</div>
+            <div class="ch-updated-line" id="ch5-updated">Updated 0s ago · NYC OpenData</div>
+          </div>
+
+          <div class="lfo-scope-row">
+            <div class="lfo-meter"><div class="lfo-fill nycdoc" id="lfo-bar-nycdoc"></div></div>
+            <span class="lfo-pct" id="lfo-pct-nycdoc">0%</span>
+          </div>
+
+          <div class="fader-group">
+            <label for="agg-nycdoc" class="fader-label">
+              <span>DATA WEIGHT</span>
+              <span class="fader-val" id="agg-val-nycdoc">115%</span>
+            </label>
+            <input id="agg-nycdoc" class="mixer-slider nycdoc" type="range" min="0" max="200" value="115" step="1" />
+          </div>
+
+          <div class="ch-footer-row">
+            <span class="ch-src-caption">NYC DOC / OpenData</span>
+            <button id="btn-pulse-nycdoc" class="pulse-mini-btn nycdoc-btn" type="button">NEXT INMATE</button>
           </div>
         </article>
 
@@ -529,6 +566,14 @@
                 </select>
               </label>
             </div>
+            <label class="param-control">
+              <span>CH 05 LFO (NYC CUSTODY)</span>
+              <select id="mode-nycdoc">
+                <option value="slew" selected>Cell Resonance</option>
+                <option value="step">Stepped Roll Call</option>
+                <option value="spike">Detention Impulse</option>
+              </select>
+            </label>
             <label class="param-control">
               <span>REVERB MIX <em id="val-reverb">54%</em></span>
               <input id="param-reverb" type="range" min="0" max="100" value="54" />

@@ -16,6 +16,7 @@
   --spending-orange: #fb7185;
   --mortality-crimson: #ff334b;
   --community-teal: #34d399;
+  --nycdoc-violet: #a78bfa;
 
   --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -605,7 +606,7 @@ body {
 .mixer-console {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) 250px;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) 230px;
   gap: 10px;
   padding: 10px 14px 12px;
   background: #0a0d14;
@@ -644,6 +645,7 @@ body {
 .ch-spending { border-top: 2px solid var(--spending-orange); }
 .ch-mortality { border-top: 2px solid var(--mortality-crimson); }
 .ch-community { border-top: 2px solid var(--community-teal); }
+.ch-nycdoc { border-top: 2px solid var(--nycdoc-violet); }
 .expression-panel { border-top: 2px solid var(--sanctuary-gold); }
 
 .ch-header {
@@ -751,6 +753,7 @@ body {
 .lfo-fill.spending { background: var(--spending-orange); }
 .lfo-fill.mortality { background: var(--mortality-crimson); }
 .lfo-fill.community { background: var(--community-teal); }
+.lfo-fill.nycdoc { background: var(--nycdoc-violet); }
 
 .fader-group {
   display: flex;
@@ -801,6 +804,7 @@ body {
 .mixer-slider.spending::-webkit-slider-thumb { background: var(--spending-orange); }
 .mixer-slider.mortality::-webkit-slider-thumb { background: var(--mortality-crimson); }
 .mixer-slider.community::-webkit-slider-thumb { background: var(--community-teal); }
+.mixer-slider.nycdoc::-webkit-slider-thumb { background: var(--nycdoc-violet); }
 .mixer-slider.sanctuary::-webkit-slider-thumb { background: var(--sanctuary-gold); }
 
 .ch-footer-row {
@@ -850,6 +854,12 @@ body {
   background: rgba(52, 211, 153, 0.14);
   border-color: rgba(52, 211, 153, 0.45);
   color: #a7f3d0;
+}
+
+.pulse-mini-btn.nycdoc-btn {
+  background: rgba(167, 139, 250, 0.14);
+  border-color: rgba(167, 139, 250, 0.45);
+  color: #ddd6fe;
 }
 
 /* Expression XY Pad */
@@ -1215,10 +1225,10 @@ body {
     justify-content: flex-start;
   }
   .mixer-console {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .expression-panel {
-    grid-column: span 2;
+    grid-column: span 1;
   }
   .drawer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

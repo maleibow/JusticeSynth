@@ -1,6 +1,6 @@
 # JUSTICE SYNTH
 
-A live-performance Web Audio synthesizer and visual telemetry instrument driven by U.S. incarceration spending, private prison equities, custody mortality records, and prisoner civil-rights filings.
+A live-performance Web Audio synthesizer and visual telemetry instrument driven by U.S. incarceration spending, private prison equities, custody mortality records, NYC daily detention rosters, and prisoner civil-rights filings.
 
 ## Key Features
 
@@ -15,6 +15,7 @@ A live-performance Web Audio synthesizer and visual telemetry instrument driven 
 2. **Federal Carceral Spending (`USAspending.gov API v2`):** DOJ Bureau of Prisons & DHS ICE contract awards plus continuous session expenditure (`$2,560.55/sec` direct, `$5,771.18/sec` total burden).
 3. **Custody Mortality (`UCLA Law Behind Bars` & `Incarceration Transparency`):** Individual BOP, ICE detention, and jail mortality records.
 4. **Courts & Families (`Federal Register BOP API`, `CourtListener`, `Vera / PPI`):** Live Bureau of Prisons notices, prisoner civil-rights filings, and family/pre-trial metrics.
+5. **NYC Daily Inmates In Custody (`NYC OpenData 7479-ugqb`):** Live daily NYC Department of Correction census, pre-trial detention (`DE`/`DEP`/`DPV`) & Brad H. mental health observation shares, and anonymized individual custody records.
 
 ## Live Shortcuts
 

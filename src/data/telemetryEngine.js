@@ -201,6 +201,61 @@ const FALLBACK_COMMUNITY_FILINGS = [
   }
 ];
 
+const NYC_STATUS_LABELS = {
+  DE: 'Pre-Trial Detainee (Unconvicted)',
+  CS: 'City Sentenced',
+  DEP: 'Detainee Parole Violator',
+  DNS: 'Newly State Sentenced',
+  SSR: 'State Sentenced Ready',
+  DPV: 'Detainee Technical Parole',
+  CSP: 'City Sentenced Parole'
+};
+
+const FALLBACK_NYC_INMATES = [
+  {
+    inmateid: '20204933',
+    admitted_dt: '2026-10-31T12:02:40.000',
+    custody_level: 'MAX',
+    bradh: 'N',
+    race: 'Black',
+    gender: 'M',
+    age: 27,
+    inmate_status_code: 'DE',
+    statusLabel: 'Pre-Trial Detainee (Unconvicted)',
+    top_charge: '120.10',
+    daysHeld: 15,
+    source: 'NYC OpenData Archive'
+  },
+  {
+    inmateid: '20244415',
+    admitted_dt: '2026-04-19T12:46:32.000',
+    custody_level: 'MAX',
+    bradh: 'Y',
+    race: 'Black',
+    gender: 'M',
+    age: 22,
+    inmate_status_code: 'DE',
+    statusLabel: 'Pre-Trial Detainee (Unconvicted)',
+    top_charge: '160.15',
+    daysHeld: 210,
+    source: 'NYC OpenData Archive'
+  },
+  {
+    inmateid: '20239360',
+    admitted_dt: '2026-05-26T11:12:59.000',
+    custody_level: 'MIN',
+    bradh: 'N',
+    race: 'Other',
+    gender: 'M',
+    age: 47,
+    inmate_status_code: 'DE',
+    statusLabel: 'Pre-Trial Detainee (Unconvicted)',
+    top_charge: '140.20',
+    daysHeld: 173,
+    source: 'NYC OpenData Archive'
+  }
+];
+
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
@@ -256,7 +311,8 @@ export class TelemetryEngine {
       stocks: { state: 'syncing', label: 'SYNCING' },
       usaspending: { state: 'syncing', label: 'SYNCING' },
       deaths: { state: 'syncing', label: 'SYNCING' },
-      community: { state: 'syncing', label: 'SYNCING' }
+      community: { state: 'syncing', label: 'SYNCING' },
+      nycdoc: { state: 'syncing', label: 'SYNCING' }
     };
 
     // Stock baseline state (CXW & GEO)
@@ -278,15 +334,21 @@ export class TelemetryEngine {
     this.communityIdx = 0;
     this.currentCommunity = FALLBACK_COMMUNITY_FILINGS[0];
 
+    this.nycInmates = [...FALLBACK_NYC_INMATES];
+    this.nycIdx = 0;
+    this.currentNycInmate = FALLBACK_NYC_INMATES[0];
+    this.nycStats = { total: 6628, pretrial: 5696, bradh: 4073 };
+
     this.lastUpdated = {
       equity: Date.now(),
       spending: Date.now(),
       mortality: Date.now(),
       community: Date.now(),
+      nycdoc: Date.now(),
       population: Date.now()
     };
 
-    // 4 Moldable Telemetry LFO Channels
+    // 5 Moldable Telemetry LFO Channels
     this.channels = {
       equity: {
         rawTarget: 0.38,
@@ -323,6 +385,15 @@ export class TelemetryEngine {
         mode: 'slew',
         pulse: 0,
         phase: 0.7
+      },
+      nycdoc: {
+        rawTarget: 0.48,
+        value: 0.45,
+        stepped: 0.45,
+        aggression: 1.05,
+        mode: 'slew',
+        pulse: 0,
+        phase: 1.8
       }
     };
 
@@ -336,6 +407,7 @@ export class TelemetryEngine {
     this._contractAccum = 0;
     this._deathAccum = 0;
     this._communityAccum = 0;
+    this._nycAccum = 0;
     this._stepAccum = 0;
     this._pollInterval = null;
   }
@@ -424,13 +496,15 @@ export class TelemetryEngine {
     this.apiStatus.usaspending = { state: 'syncing', label: 'SYNCING' };
     this.apiStatus.deaths = { state: 'syncing', label: 'SYNCING' };
     this.apiStatus.community = { state: 'syncing', label: 'SYNCING' };
+    this.apiStatus.nycdoc = { state: 'syncing', label: 'SYNCING' };
     this.emit('status', this.apiStatus);
 
     await Promise.allSettled([
       this.fetchStocks(),
       this.fetchUsaSpending(),
       this.fetchDeathRecords(),
-      this.fetchCommunityAndBop()
+      this.fetchCommunityAndBop(),
+      this.fetchNycCustody()
     ]);
 
     this.emit('status', this.apiStatus);
@@ -831,6 +905,87 @@ export class TelemetryEngine {
     this.pulseCommunity(false);
   }
 
+  async fetchNycCustody() {
+    const base = 'https://data.cityofnewyork.us/resource/7479-ugqb.json';
+    try {
+      const [rowsRes, statusRes, bradhRes] = await Promise.all([
+        fetchWithTimeout(`${base}?$limit=35&$order=admitted_dt%20DESC`, {}, 5500),
+        fetchWithTimeout(`${base}?$select=inmate_status_code,count(*)%20as%20cnt&$group=inmate_status_code`, {}, 5500),
+        fetchWithTimeout(`${base}?$select=bradh,count(*)%20as%20cnt&$group=bradh`, {}, 5500)
+      ]);
+
+      let total = 0;
+      let pretrial = 0;
+      let bradh = 0;
+
+      if (statusRes.ok) {
+        const statusGroups = await statusRes.json();
+        if (Array.isArray(statusGroups)) {
+          for (const g of statusGroups) {
+            const c = Number(g.cnt) || 0;
+            total += c;
+            if (g.inmate_status_code === 'DE' || g.inmate_status_code === 'DEP' || g.inmate_status_code === 'DPV') {
+              pretrial += c;
+            }
+          }
+        }
+      }
+
+      if (bradhRes.ok) {
+        const bradhGroups = await bradhRes.json();
+        if (Array.isArray(bradhGroups)) {
+          const yRow = bradhGroups.find(g => g.bradh === 'Y');
+          if (yRow) bradh = Number(yRow.cnt) || 0;
+        }
+      }
+
+      if (total > 0) {
+        this.nycStats = { total, pretrial, bradh };
+      }
+
+      if (rowsRes.ok) {
+        const rawRows = await rowsRes.json();
+        if (Array.isArray(rawRows) && rawRows.length > 0) {
+          const raceMap = { B: 'Black', W: 'White', O: 'Other', A: 'Asian', I: 'Indigenous' };
+          const nowMs = Date.now();
+          this.nycInmates = rawRows.map(r => {
+            const admMs = r.admitted_dt ? Date.parse(r.admitted_dt) : nowMs;
+            const daysHeld = Number.isFinite(admMs) ? Math.max(0, Math.floor((nowMs - admMs) / 86400000)) : 0;
+            const code = r.inmate_status_code || 'DE';
+            return {
+              inmateid: r.inmateid || 'DOC',
+              admitted_dt: r.admitted_dt || '',
+              custody_level: r.custody_level || 'MED',
+              bradh: r.bradh || 'N',
+              race: raceMap[r.race] || r.race || 'Unspecified',
+              gender: r.gender || 'M',
+              age: r.age ? Number(r.age) : null,
+              inmate_status_code: code,
+              statusLabel: NYC_STATUS_LABELS[code] || code,
+              top_charge: r.top_charge || 'Unlisted',
+              daysHeld,
+              source: 'NYC OpenData 7479-ugqb LIVE'
+            };
+          });
+          this.nycIdx = 0;
+          this.currentNycInmate = this.nycInmates[0];
+          this.lastUpdated.nycdoc = Date.now();
+          this.apiStatus.nycdoc = { state: 'live', label: `LIVE (${this.nycStats.total.toLocaleString('en-US')})` };
+          this.emit('status', this.apiStatus);
+          this.emit('nycdoc', { stats: this.nycStats, record: this.currentNycInmate, emitAudio: false });
+          return;
+        }
+      }
+    } catch (_) {
+      // Fallback handled below
+    }
+
+    this.lastUpdated.nycdoc = Date.now();
+    this.apiStatus.nycdoc = { state: 'archive', label: `ARCHIVE (${this.nycStats.total.toLocaleString('en-US')})` };
+    this.emit('status', this.apiStatus);
+    this.emit('nycdoc', { stats: this.nycStats, record: this.currentNycInmate, emitAudio: false });
+  }
+
   /**
    * Advances LFO conditioning and fires scheduled telemetry events at 60Hz.
    */
@@ -866,13 +1021,20 @@ export class TelemetryEngine {
       this.pulseCommunity(true);
     }
 
+    // 5. NYC Daily Custody individual record cycling
+    this._nycAccum += safeDt * speed;
+    if (this._nycAccum >= 7.5) {
+      this._nycAccum = 0;
+      this.pulseNycInmate(true);
+    }
+
     // Sample & Hold clock for 'step' LFO mode
     this._stepAccum += safeDt * speed;
     const shouldStep = this._stepAccum >= 0.85;
     if (shouldStep) this._stepAccum = 0;
 
     // Update each channel LFO
-    const chNames = ['equity', 'spending', 'mortality', 'community'];
+    const chNames = ['equity', 'spending', 'mortality', 'community', 'nycdoc'];
     for (const name of chNames) {
       const ch = this.channels[name];
       ch.phase += safeDt * (0.45 + speed * 0.12);
@@ -1003,6 +1165,31 @@ export class TelemetryEngine {
     }
   }
 
+  pulseNycInmate(emitEvent = true) {
+    if (!this.nycInmates.length) return;
+    const record = this.nycInmates[this.nycIdx % this.nycInmates.length];
+    this.nycIdx = (this.nycIdx + 1) % this.nycInmates.length;
+    this.currentNycInmate = record;
+
+    const pretrialRatio = this.nycStats.total > 0 ? this.nycStats.pretrial / this.nycStats.total : 0.85;
+    const isMax = record.custody_level === 'MAX' ? 0.18 : 0.05;
+    const isBradh = record.bradh === 'Y' ? 0.16 : 0;
+    this.channels.nycdoc.rawTarget = clamp(pretrialRatio * 0.6 + isMax + isBradh, 0.25, 0.98);
+    this.channels.nycdoc.pulse = 0.92;
+
+    this.emit('nycdoc', { stats: this.nycStats, record, emitAudio: emitEvent });
+    if (emitEvent) {
+      const mhTag = record.bradh === 'Y' ? ' · Mental Health Obs.' : '';
+      const ageTag = record.age ? `Age ${record.age}` : 'Age N/A';
+      this.emit('event', {
+        type: 'nycdoc',
+        section: 'nycdoc',
+        badge: 'NYC DAILY CUSTODY',
+        headline: `${this.nycStats.total.toLocaleString('en-US')} held · ${ageTag} · ${record.statusLabel} (${record.custody_level}${mhTag})`
+      });
+    }
+  }
+
   getSectionDetails(sectionKey) {
     if (sectionKey === 'equity') {
       return {
@@ -1094,6 +1281,37 @@ export class TelemetryEngine {
       };
     }
 
+    if (sectionKey === 'nycdoc') {
+      const pretrialPct = this.nycStats.total > 0
+        ? ((this.nycStats.pretrial / this.nycStats.total) * 100).toFixed(1)
+        : '85.9';
+      const bradhPct = this.nycStats.total > 0
+        ? ((this.nycStats.bradh / this.nycStats.total) * 100).toFixed(1)
+        : '61.4';
+      const recent = [this.currentNycInmate, ...this.nycInmates.filter(i => i !== this.currentNycInmate)].slice(0, 5);
+      return {
+        key: 'nycdoc',
+        title: 'NYC DAILY INMATES IN CUSTODY (DOC)',
+        statusLabel: this.apiStatus.nycdoc.label,
+        statusState: this.apiStatus.nycdoc.state,
+        source: 'NYC OpenData — Department of Correction Daily Inmates In Custody (Dataset 7479-ugqb).',
+        indicates: 'Daily census of individuals held in New York City DOC jails (including Rikers Island), tracking unconvicted pre-trial detention (DE), custody security level, and Brad H. mental health service designation.',
+        frequency: 'Updated daily by NYC Department of Correction; live Socrata API queried on load/sync and individual anonymized records cycle every ~7.5s.',
+        lastUpdatedMs: this.lastUpdated.nycdoc,
+        actionLabel: 'NEXT NYC INMATE RECORD',
+        records: [
+          {
+            label: `Daily Snapshot: ${this.nycStats.total.toLocaleString('en-US')} Total Inmates`,
+            detail: `${this.nycStats.pretrial.toLocaleString('en-US')} (${pretrialPct}%) pre-trial / unconvicted detainees · ${this.nycStats.bradh.toLocaleString('en-US')} (${bradhPct}%) under Brad H. mental health observation.`
+          },
+          ...recent.map(r => ({
+            label: `ID #${r.inmateid} — ${r.age ? `Age ${r.age}` : 'Age N/A'} (${r.gender}, ${r.race}) · ${r.custody_level} Custody`,
+            detail: `${r.statusLabel} · Held ${r.daysHeld} days · Brad H. Mental Health: ${r.bradh === 'Y' ? 'Yes' : 'No'} · Top Charge: ${r.top_charge} [${r.source}]`
+          }))
+        ]
+      };
+    }
+
     // National population baseline section
     return {
       key: 'population',
@@ -1142,9 +1360,10 @@ export class TelemetryEngine {
     const spendingMod = this.getModulated('spending');
     const mortalityMod = this.getModulated('mortality');
     const communityMod = this.getModulated('community');
+    const nycdocMod = this.getModulated('nycdoc');
 
     const systemicPressure = clamp(
-      equityMod * 0.32 + spendingMod * 0.38 + mortalityMod * 0.34,
+      equityMod * 0.25 + spendingMod * 0.30 + mortalityMod * 0.27 + nycdocMod * 0.22,
       0.0,
       1.35
     );
@@ -1154,11 +1373,14 @@ export class TelemetryEngine {
         equity: { ...this.channels.equity, modulated: equityMod },
         spending: { ...this.channels.spending, modulated: spendingMod },
         mortality: { ...this.channels.mortality, modulated: mortalityMod },
-        community: { ...this.channels.community, modulated: communityMod }
+        community: { ...this.channels.community, modulated: communityMod },
+        nycdoc: { ...this.channels.nycdoc, modulated: nycdocMod }
       },
       systemicPressure,
       stocks: this.stocks,
       loggedDeathsCount: this.loggedDeathsCount,
+      nycStats: this.nycStats,
+      currentNycInmate: this.currentNycInmate,
       currentContract: this.currentContract,
       currentDeath: this.currentDeath,
       currentCommunity: this.currentCommunity,
